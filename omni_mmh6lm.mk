@@ -1,4 +1,4 @@
-PRODUCT_RELEASE_NAME := mmh6lm
+PRODUCT_RELEASE_NAME := omni_mmh6lm-eng
 
 $(call inherit-product, $(SRC_TARGET_DIR)/product/embedded.mk)
 
