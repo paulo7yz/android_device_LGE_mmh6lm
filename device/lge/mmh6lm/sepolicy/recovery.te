@@ -1,0 +1,52 @@
+# =============================================================================
+# recovery.te - Regras SELinux para TWRP recovery no LG K8+ (LM-X120BMW)
+# =============================================================================
+# Durante o recovery, SELinux fica em modo permissivo para não atrapalhar
+# operações de backup/restore/flash. Estas regras garantem acesso mínimo.
+# =============================================================================
+
+# --- Recovery domain: tudo permitido durante recovery ---
+type recovery, domain;
+type recovery_exec, exec_type, file_type;
+
+# Recovery pode acessar qualquer file_type (necessário para backup/restore)
+allow recovery file_type:file rw_file_perms;
+allow recovery file_type:dir rw_dir_perms;
+allow recovery file_type:lnk_file r_file_perms;
+allow recovery file_type:blk_file rw_file_perms;
+
+# Acesso a dispositivos de bloco (partições)
+allow recovery block_device:blk_file rw_file_perms;
+
+# Acesso a dispositivos de caractere (framebuffer, input, etc)
+allow recovery device:chr_file rw_file_perms;
+
+# Acesso a sysfs (backlight, etc)
+allow recovery sysfs_type:file rw_file_perms;
+allow recovery sysfs_type:dir r_file_perms;
+
+# Acesso a /proc
+allow recovery proc_type:file r_file_perms;
+allow recovery proc_type:dir r_file_perms;
+
+# Acesso a tmpfs
+allow recovery tmpfs:file rw_file_perms;
+allow recovery tmpfs:dir rw_file_perms;
+
+# Sistema de arquivos
+allow recovery fs_type:filesystem mount;
+
+# Acesso a ptty para shell
+allow recovery ptty_device:chr_file rw_file_perms;
+
+# Execução de binários
+allow recovery system_file:file rx_file_perms;
+allow recovery recovery_exec:file rx_file_perms;
+
+# Comunicação com adbd
+allow recovery adbd:unix_stream_socket connectto;
+allow recovery adbd:fd use;
+
+# --- Recovery self-execution e transições ---
+allow recovery shell_exec:file rx_file_perms;
+allow recovery toolbox_exec:file rx_file_perms;

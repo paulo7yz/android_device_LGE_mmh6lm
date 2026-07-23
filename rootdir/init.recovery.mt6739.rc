@@ -1,0 +1,173 @@
+# =============================================================================
+# init.recovery.mt6739.rc - Configuração de recovery para SoC MT6737M/MT6739
+# Projeto: TWRP para LG K8+ (LM-X120BMW)
+# =============================================================================
+# CORREÇÕES aplicadas:
+#   1. Removida linha `rm /config/usb_gadget/g1/configs/b.1/f2` que quebrava ADB
+#   2. UDC dinâmico: lê /sys/class/udc/ em vez de hardcoded "musb-hdrc"
+#   3. Adicionado setprop ro.secure 0 no on boot
+#   4. Permissões de framebuffer e input para UI do TWRP
+# =============================================================================
+
+on early-init
+    # --- Framebuffer (CRÍTICO para UI do TWRP) ---
+    chmod 0666 /dev/graphics/fb0
+    chown system graphics /dev/graphics/fb0
+    chmod 0666 /dev/fb0
+    chown system graphics /dev/fb0
+
+    # --- Dispositivos de input (touchscreen) ---
+    chmod 0666 /dev/input/event*
+    chown root input /dev/input/event*
+
+    # --- DRM/render nodes (algumas UIs usam GPU) ---
+    chmod 0666 /dev/dri/card0
+    chmod 0666 /dev/dri/renderD128
+
+    # --- Módulos do kernel MediaTek ---
+    insmod /lib/modules/mtk_hif_sys.ko 2>/dev/null
+    insmod /lib/modules/mtk_smi.ko 2>/dev/null
+    insmod /lib/modules/mtk_v4l2_mgr.ko 2>/dev/null
+
+on init
+    # --- Propriedades específicas do SoC ---
+    setprop ro.hardware mt6739
+    setprop ro.board.platform mt6737m
+
+    # --- Configuração de framebuffer para MediaTek ---
+    # MT6737M usa fb0 direto, sem DRM atomic
+    setprop ro.surface_flinger.primary_display_orientation 0
+    setprop ro.sf.hwrotation 0
+
+    # --- Configuração de densidade de tela ---
+    setprop ro.sf.lcd_density 320
+
+on boot
+    # --- CORREÇÃO: ro.secure=0 para permitir ADB em recovery ---
+    setprop ro.secure 0
+    setprop ro.adb.secure 0
+    setprop ro.debuggable 1
+
+    # --- Configuração USB Gadget (ADB + MTP) ---
+    # Cria estrutura do gadget g1
+    mkdir /config/usb_gadget/g1 0770 shell shell
+    mkdir /config/usb_gadget/g1/strings 0770 shell shell
+    mkdir /config/usb_gadget/g1/strings/0x409 0770 shell shell
+    mkdir /config/usb_gadget/g1/configs 0770 shell shell
+    mkdir /config/usb_gadget/g1/configs/b.1 0770 shell shell
+    mkdir /config/usb_gadget/g1/configs/b.1/strings 0770 shell shell
+    mkdir /config/usb_gadget/g1/configs/b.1/strings/0x409 0770 shell shell
+
+    # IDs USB (LG vendor ID: 0x1004, product ID: 0x631C)
+    write /config/usb_gadget/g1/idVendor 0x1004
+    write /config/usb_gadget/g1/idProduct 0x631C
+    write /config/usb_gadget/g1/bcdDevice 0x0220
+    write /config/usb_gadget/g1/bcdUSB 0x0200
+    write /config/usb_gadget/g1/strings/0x409/manufacturer "LG"
+    write /config/usb_gadget/g1/strings/0x409/product "LG K8+"
+    write /config/usb_gadget/g1/strings/0x409/serialnumber "${ro.serialno}"
+    write /config/usb_gadget/g1/configs/b.1/strings/0x409/configuration "adb"
+    write /config/usb_gadget/g1/configs/b.1/MaxPower 500
+
+    # Função ADB (f1)
+    mkdir /config/usb_gadget/g1/functions/ffs.adb 0770 shell shell
+    mkdir /dev/usb-ffs/adb 0770 shell shell
+    mkdir /dev/usb-ffs/adb/ep0 0770 shell shell
+    symlink /config/usb_gadget/g1/functions/ffs.adb /dev/usb-ffs/adb/descriptors
+    write /config/usb_gadget/g1/configs/b.1/f1 ffs.adb
+
+    # Função MTP (f2) - NÃO removida (correção do build #7)
+    # A linha `rm /config/usb_gadget/g1/configs/b.1/f2` foi REMOVIDA
+    # porque quebrava o bind do gadget e impedia ADB.
+    mkdir /config/usb_gadget/g1/functions/mtp.mtp 0770 shell shell
+    write /config/usb_gadget/g1/configs/b.1/f2 mtp.mtp
+
+    # --- CORREÇÃO: UDC dinâmico ---
+    # Em vez de `write /config/usb_gadget/g1/UDC "musb-hdrc"` (hardcoded),
+    # lê o controlador real de /sys/class/udc/ dinamicamente.
+    # MT6737M pode usar musb-hdrc, musb-hdrc.0, ou dwc3.0 dependendo da revisão.
+    exec - root root -- /sbin/sh -c "UDC_NAME=$(ls /sys/class/udc/ 2>/dev/null | head -1) && echo ${UDC_NAME} > /config/usb_gadget/g1/UDC"
+
+    # --- Permissões de framebuffer (re-aplicadas no boot) ---
+    chmod 0666 /dev/graphics/fb0
+    chown system graphics /dev/graphics/fb0
+
+    # --- Permissões de input (re-aplicadas no boot) ---
+    chmod 0666 /dev/input/event*
+    chown root input /dev/input/event*
+
+    # --- Brilho (controla backlight via sysfs) ---
+    # TW_BRIGHTNESS_PATH é injetado pelo device_vars.mk
+    write /sys/class/leds/lcd-backlight/brightness 128
+
+    # --- Vibração (feedback tátil do TWRP) ---
+    chmod 0666 /sys/class/leds/vibrator/duration
+    chmod 0666 /sys/class/leds/vibrator/activate
+
+    # --- Configuração de rede (para ADB over TCP) ---
+    setprop service.adb.tcp.port 5037
+    setprop persist.adb.tcp.port 5037
+
+    # --- Inicia ADB ---
+    setprop sys.usb.config adb
+    setprop sys.usb.config mtp,adb
+
+# =============================================================================
+# Triggers de propriedades
+# =============================================================================
+
+on property:sys.usb.config=adb
+    # Re-configura gadget para modo ADB apenas
+    write /config/usb_gadget/g1/configs/b.1/strings/0x409/configuration "adb"
+    # Re-bind UDC
+    exec - root root -- /sbin/sh -c "echo $(cat /sys/class/udc/* 2>/dev/null | head -1) > /config/usb_gadget/g1/UDC"
+    start adbd
+
+on property:sys.usb.config=mtp,adb
+    # Configura gadget para MTP+ADB
+    write /config/usb_gadget/g1/configs/b.1/strings/0x409/configuration "mtp,adb"
+    # Re-bind UDC
+    exec - root root -- /sbin/sh -c "echo $(cat /sys/class/udc/* 2>/dev/null | head -1) > /config/usb_gadget/g1/UDC"
+    start adbd
+
+on property:ro.secure=0
+    setprop ro.adb.secure 0
+    setprop service.adb.tcp.port 5037
+
+# =============================================================================
+# Serviços específicos do SoC
+# =============================================================================
+
+# --- adbd (ADB daemon para recovery) ---
+service adbd /sbin/adbd --root_seclabel=u:r:su:s0
+    class main
+    user root
+    group root
+    seclabel u:r:adbd:s0
+    disabled
+    onrestart restart recovery
+
+# --- recovery (TWRP) ---
+service recovery /sbin/recovery
+    class main
+    user root
+    group root
+    seclabel u:r:recovery:s0
+    critical
+    onrestart restart adbd
+
+# --- logcatd (logs para /tmp/recovery.log) ---
+service logcatd /system/bin/logcat -f /tmp/recovery.log -r 1024 -n 5 *:V
+    class main
+    user root
+    group root
+    disabled
+    seclabel u:r:logcatd:s0
+
+# --- healthd (bateria) ---
+service healthd /sbin/healthd
+    class main
+    user root
+    group root
+    critical
+    seclabel u:r:healthd:s0

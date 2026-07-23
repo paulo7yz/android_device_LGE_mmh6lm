@@ -1,0 +1,48 @@
+# =============================================================================
+# .gitignore - Device tree LG K8+ (LM-X120BMW)
+# =============================================================================
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build
+build/
+*.img
+*.iso
+out/
+
+# Project-specific junk (from other tools in workspace)
+hits.txt
+combos.txt
+checker.py
+debug_*.py
+check_combos.py
+test_*.py
+scraper_output/
+openbullet_web/
+openbullet_web.zip
+checkdroid/
+network_*.txt
+codex_modified.txt
+aqtinstall.log
+hwparam.json
+1.14.0/
+config/
+logs/
+resources/
+src/
+Open-tgtylab/
+build-library/

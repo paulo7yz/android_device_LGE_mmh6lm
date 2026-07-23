@@ -1,0 +1,31 @@
+# =============================================================================
+# adbd.te - Regras SELinux para ADB daemon em recovery no LG K8+
+# =============================================================================
+
+# --- ADB domain ---
+type adbd, domain;
+type adbd_exec, exec_type, file_type;
+
+# ADB em recovery precisa de acesso privilegiado
+allow adbd su:fd use;
+allow adbd su:process sigchld;
+
+# Acesso ao shell
+allow adbd shell:fd use;
+allow adbd shell:process sigchld;
+allow adbd shell:unix_stream_socket connectto;
+
+# Acesso ao sistema de arquivos
+allow adbd file_type:file r_file_perms;
+allow adbd file_type:dir r_dir_perms;
+
+# Acesso a ptty
+allow adbd ptty_device:chr_file rw_file_perms;
+
+# Execução de binários para push/pull/install
+allow adbd system_file:file rx_file_perms;
+allow adbd shell_exec:file rx_file_perms;
+allow adbd toolbox_exec:file rx_file_perms;
+
+# Acesso a dispositivos de bloco (dd, flash)
+allow adbd block_device:blk_file rw_file_perms;

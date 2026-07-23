@@ -1,0 +1,50 @@
+# =============================================================================
+# TWRP fstab - LG K8+ (LM-X120BMW) / MT6737M
+# Partições do stock LG com bootdevice/by-name
+# Baseado no fstab original do GitHub com paths do stock LG
+# =============================================================================
+
+# --- Partições do sistema (montadas automaticamente pelo TWRP) ---
+/dev/block/platform/bootdevice/by-name/system        /system       ext2    ro                                                        wait
+/dev/block/platform/bootdevice/by-name/vendor        /vendor       ext4    ro                                                        wait
+/dev/block/platform/bootdevice/by-name/userdata      /data         f2fs    noatime,nosuid,nodev,noauto_da_alloc,discard               wait,check
+/dev/block/platform/bootdevice/by-name/cache         /cache        ext4    noatime,nosuid,nodev,noauto_da_alloc,discard               wait,check
+
+# --- Partições de boot ---
+/dev/block/platform/bootdevice/by-name/boot          /boot         emmc    defaults                                                  defaults
+/dev/block/platform/bootdevice/by-name/recovery      /recovery     emmc    defaults                                                  defaults
+
+# --- Partições misc/vendor ---
+/dev/block/platform/bootdevice/by-name/para          /misc         emmc    defaults                                                  defaults
+/dev/block/platform/bootdevice/by-name/misc2         /misc2        emmc    defaults                                                  defaults
+/dev/block/platform/bootdevice/by-name/encrypt       /encrypt      emmc    defaults                                                  defaults
+/dev/block/platform/bootdevice/by-name/eksst         /eksst        emmc    defaults                                                  defaults
+/dev/block/platform/bootdevice/by-name/frp           /persistent   emmc    defaults                                                  defaults
+/dev/block/platform/bootdevice/by-name/persist_lg    /persist-lg   ext4    noatime,nosuid,nodev,noauto_da_alloc,discard               wait,check
+/dev/block/platform/bootdevice/by-name/nvdata        /nvdata       ext4    noatime,nosuid,nodev,noauto_da_alloc,discard               wait,check
+/dev/block/platform/bootdevice/by-name/mpt           /mpt          ext4    noatime,nosuid,nodev,noauto_da_alloc,discard               wait,check
+/dev/block/platform/bootdevice/by-name/power         /power        ext4    noatime,nosuid,nodev,noauto_da_alloc,discard               wait,check
+
+# --- Partição carrier (produto da operadora) ---
+/dev/block/platform/bootdevice/by-name/carrier       /mnt/product/carrier ext4 noatime,nosuid,nodev,noauto_da_alloc,discard            wait,check
+
+# --- Partição OP (Open Partition - LG) ---
+/dev/block/platform/bootdevice/by-name/OP            /product/OP   ext4    ro,noatime,nosuid,nodev,barrier=1,data=ordered,noauto_da_alloc,discard  wait,check,quota
+
+# --- Partições SCP/SSPM/SPM (firmware MediaTek) ---
+/dev/block/platform/bootdevice/by-name/scp1          /scp1         emmc    defaults                                                  defaults
+/dev/block/platform/bootdevice/by-name/scp2          /scp2         emmc    defaults                                                  defaults
+/dev/block/platform/bootdevice/by-name/sspm_1        /sspm_1       emmc    defaults                                                  defaults
+/dev/block/platform/bootdevice/by-name/sspm_2        /sspm_2       emmc    defaults                                                  defaults
+/dev/block/platform/bootdevice/by-name/spmfw         /spmfw        emmc    defaults                                                  defaults
+
+# =============================================================================
+# Storage
+# =============================================================================
+# Suporte a armazenamento externo (se houver SD card)
+# /dev/block/mmcblk1p1     /external_sd    vfat    defaults                                                    defaults
+
+# =============================================================================
+# Flags de montagem para data (essencial para decriptação)
+# =============================================================================
+# /data use o filesystem real (f2fs) com suporte a crypto

@@ -1,0 +1,163 @@
+# =============================================================================
+# init.rc - Ramdisk de recovery para LG K8+ (LM-X120BMW) / MT6737M
+# =============================================================================
+# CORREÇÃO: O build #7 importava condicionalmente /init.recovery.${ro.hardware}.rc
+# mas ro.hardware=mmh6lm (codinome LG) enquanto o arquivo real no ramdisk se
+# chama init.recovery.mt6739.rc (SoC). Isso impedia a execução do setup de
+# USB/ADB. Agora importamos hardcoded pelo SoC real, com fallback.
+# =============================================================================
+
+import /init.environ.rc
+import /init.usb.rc
+import /init.${ro.hardware}.rc
+
+# --- CORREÇÃO: Import hardcoded pelo SoC real (MT6737M/MT6739) ---
+# ro.hardware=mmh6lm (LG) mas o arquivo no ramdisk é init.recovery.mt6739.rc
+# Importamos primeiro o específico do SoC, depois fallback genérico.
+import /init.recovery.mt6739.rc
+# Fallback: se o específico do SoC não existir, tenta pelo ro.hardware
+import /init.recovery.${ro.hardware}.rc
+
+on early-init
+    # Define o path de init
+    setinitpath /sbin
+
+    # Cria diretórios base do recovery
+    mkdir /dev 0755
+    mkdir /proc 0755
+    mkdir /sys 0755
+    mkdir /system 0755
+    mkdir /vendor 0755
+    mkdir /data 0771
+    mkdir /cache 0771
+    mkdir /persist 0771
+    mkdir /tmp 0777
+    mkdir /mnt 0755
+    mkdir /mnt/sdcard 0755
+    mkdir /mnt/external_sd 0755
+    mkdir /mnt/usb-otg 0755
+    mkdir /recovery 0755
+
+    # Mount tmpfs em /tmp (recovery usa /tmp extensivamente)
+    mount tmpfs tmpfs /tmp nosuid nodev noexec mode=0777
+
+    # Cria nós de dispositivo essenciais
+    mknod /dev/null c 1 3
+    mknod /dev/zero c 1 5
+    mknod /dev/random c 1 8
+    mknod /dev/urandom c 1 9
+    mknod /dev/console c 5 1
+    mknod /dev/tty c 5 0
+    mknod /dev/tty0 c 4 0
+
+    # Permissões de framebuffer e input (CRÍTICO para UI do TWRP)
+    chmod 0666 /dev/graphics/fb0
+    chown system graphics /dev/graphics/fb0
+    chmod 0666 /dev/input/event*
+    chown root input /dev/input/event*
+
+    # Sysfs e proc
+    mount proc proc /proc
+    mount sysfs sysfs /sys
+
+    # Cria symlink para /etc (recovery usa /etc para configs)
+    symlink /system/etc /etc
+
+on init
+    # Propriedades de boot
+    setprop ro.bootmode recovery
+    setprop ro.boot.mode recovery
+
+    # --- CORREÇÃO: ro.secure=0 para permitir ADB em recovery ---
+    setprop ro.secure 0
+    setprop ro.debuggable 1
+    setprop ro.allow.mock.location 1
+
+    # Propriedades de hardware
+    setprop ro.hardware ${ro.hardware}
+    setprop ro.board.platform ${ro.board.platform}
+
+    # Logging
+    setprop log.tag.TWRP VERBOSE
+    setprop log.tag.Recovery VERBOSE
+    setprop log.tag.RecoverySystem VERBOSE
+
+    # Carrega módulos do kernel se existirem
+    insmod /lib/modules/mtk_hif_sys.ko 2>/dev/null
+    insmod /lib/modules/mtk_kpd.ko 2>/dev/null
+    insmod /lib/modules/mtk_ts.ko 2>/dev/null
+
+on boot
+    # --- Propriedades de segurança (override prop.default) ---
+    setprop ro.secure 0
+    setprop ro.adb.secure 0
+    setprop ro.debuggable 1
+    setprop service.adb.tcp.port 5037
+
+    # Inicia serviço de logcat (para debug em /tmp/)
+    start logcatd
+
+    # Inicia serviço de recovery
+    start recovery
+
+    # Inicia ADB daemon
+    start adbd
+
+# =============================================================================
+# Serviços
+# =============================================================================
+
+# --- Serviço de Recovery (TWRP) ---
+service recovery /sbin/recovery
+    class main
+    user root
+    group root
+    seclabel u:r:recovery:s0
+    critical
+    onrestart restart adbd
+
+# --- ADB Daemon ---
+service adbd /sbin/adbd --root_seclabel=u:r:su:s0
+    class main
+    user root
+    group root
+    seclabel u:r:adbd:s0
+    disabled
+    onrestart restart recovery
+
+# --- ueventd (hotplug de dispositivos) ---
+service ueventd /sbin/ueventd
+    class main
+    user root
+    group root
+    critical
+    seclabel u:r:ueventd:s0
+
+# --- logcatd (captura de logs para /tmp/recovery.log) ---
+service logcatd /system/bin/logcat -f /tmp/recovery.log -r 1024 -n 5 *:V
+    class main
+    user root
+    group root
+    disabled
+    seclabel u:r:logcatd:s0
+
+# --- healthd (monitor de bateria) ---
+service healthd /sbin/healthd
+    class main
+    user root
+    group root
+    critical
+    seclabel u:r:healthd:s0
+
+# =============================================================================
+# Propriedades padrão (override de prop.default)
+# =============================================================================
+on property:ro.secure=0
+    setprop ro.adb.secure 0
+    setprop service.adb.tcp.port 5037
+
+on property:sys.usb.config=adb
+    start adbd
+
+on property:sys.usb.config=mtp,adb
+    start adbd

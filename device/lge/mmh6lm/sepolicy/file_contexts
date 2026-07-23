@@ -1,0 +1,46 @@
+# =============================================================================
+# file_contexts - Contextos de arquivo para TWRP recovery no LG K8+
+# =============================================================================
+# Define o contexto SELinux dos arquivos no ramdisk de recovery
+# =============================================================================
+
+# --- Binários do sistema recovery ---
+/sbin/recovery           u:object_r:recovery_exec:s0
+/sbin/adbd               u:object_r:adbd_exec:s0
+/sbin/ueventd            u:object_r:ueventd_exec:s0
+/sbin/healthd            u:object_r:healthd_exec:s0
+
+# --- Toolbox/binários essenciais ---
+/sbin/sh                 u:object_r:shell_exec:s0
+/system/bin/sh           u:object_r:shell_exec:s0
+/sbin/toolbox            u:object_r:toolbox_exec:s0
+/system/bin/toolbox      u:object_r:toolbox_exec:s0
+
+# --- Sistema de arquivos recovery ---
+/system(/.*)?            u:object_r:system_file:s0
+/vendor(/.*)?           u:object_r:vendor_file:s0
+/data(/.*)?             u:object_r:userdata_file:s0
+/cache(/.*)?            u:object_r:cache_file:s0
+
+# --- /proc e /sys ---
+/proc(/.*)?             u:object_r:proc:s0
+/sys(/.*)?              u:object_r:sysfs:s0
+
+# --- tmpfs ---
+/tmp(/.*)?              u:object_r:tmpfs:s0
+
+# --- Block devices ---
+/dev/block(/.*)?        u:object_r:block_device:s0
+
+# --- Graphics / Framebuffer ---
+/dev/graphics/fb0       u:object_r:framebuffer_device:s0
+
+# --- Input devices ---
+/dev/input(/.*)?        u:object_r:input_device:s0
+
+# --- ADB ---
+/dev/usb-ffs(/.*)?      u:object_r:adbd_device:s0
+
+# --- Recovery configuration ---
+/etc(/.*)?              u:object_r:recovery_config:s0
+/recovery(/.*)?         u:object_r:recovery_config:s0

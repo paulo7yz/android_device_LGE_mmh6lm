@@ -1,0 +1,473 @@
+# =============================================================================
+# build-twrp.yml - Pipeline GitHub Actions para compilar TWRP
+# Projeto: TWRP para LG K8+ (LM-X120BMW) / MT6737M (32-bit ARM)
+# =============================================================================
+# Este pipeline inclui uma etapa de "auto-descoberta" onde o runner consulta
+# o dispositivo conectado via ADB para extrair parâmetros de hardware e
+# ajustar dinamicamente o build.
+#
+# Configuração de Secrets necessária:
+#   - ADB_IP    : IP do dispositivo na rede (para ADB over TCP). Ex: 192.168.1.100
+#   - ADB_PORT  : Porta ADB. Default: 5555
+#
+# Alternativas de conexão (ver README.md para detalhes):
+#   1. ADB over TCP (ADB_IP + ADB_PORT) - dispositivo na mesma rede do runner
+#   2. SSH_PRIVATE_KEY - acessar runner remoto self-hosted com dispositivo USB
+#   3. Self-hosted runner com label [self-hosted, android-device] - dispositivo USB direto
+#   4. Sem dispositivo - fallback_vars.sh é executado automaticamente
+# =============================================================================
+
+name: "Build TWRP - LG K8+ (LM-X120BMW)"
+
+on:
+  push:
+    branches:
+      - main
+      - android-11
+      - 'twrp-*'
+    paths:
+      - 'scripts/**'
+      - 'rootdir/**'
+      - 'device/**'
+      - '.github/workflows/build-twrp.yml'
+  pull_request:
+    branches:
+      - main
+      - android-11
+  workflow_dispatch:
+    inputs:
+      flash_device:
+        description: 'Flash recovery.img no dispositivo após build (requer dispositivo conectado)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+      twrp_branch:
+        description: 'Branch do manifest TWRP (default: twrp-11)'
+        required: false
+        default: 'twrp-11'
+        type: string
+
+env:
+  # Variáveis de ambiente do build AOSP
+  ANDROID_JACK_VM_SIZE: 4g
+  ANDROID_HOME: ${{ github.workspace }}/android-sdk
+  USE_CCACHE: 1
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_EXEC: /usr/bin/ccache
+  # Manifest TWRP
+  TWRP_MANIFEST_URL: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git
+  TWRP_BRANCH: twrp-11
+
+jobs:
+  build:
+    name: Build TWRP recovery.img
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+
+    steps:
+      # =========================================================================
+      # Step 1: Checkout do código do repositório
+      # =========================================================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      # =========================================================================
+      # Step 2: Instalar dependências do sistema (AOSP build)
+      # =========================================================================
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            git-core gnupg flex bison gperf build-essential \
+            zip curl zlib1g-dev gcc-multilib g++-multilib \
+            libc6-dev-i386 lib32ncurses5-dev \
+            x11proto-core-dev libx11-dev lib32z-dev \
+            ccache libgl1-mesa-dev libxml2-utils xsltproc \
+            unzip rsync wget \
+            adb fastboot \
+            python3 python3-pip \
+            repo \
+            libssl-dev \
+            libncurses5 \
+            openjdk-11-jdk
+
+          # Instala repo tool se não estiver disponível
+          if ! command -v repo &> /dev/null; then
+            echo "[CI] Instalando repo tool..."
+            mkdir -p ~/.bin
+            curl https://storage.googleapis.com/git-repo-downloads/repo > ~/.bin/repo
+            chmod a+x ~/.bin/repo
+            echo 'export PATH=~/.bin:$PATH' >> ~/.bashrc
+            export PATH=~/.bin:$PATH
+          fi
+
+          # Verifica instalações
+          echo "[CI] Versões instaladas:"
+          adb version
+          python3 --version
+          java -version 2>&1 | head -1
+          git --version
+
+      # =========================================================================
+      # Step 3: Setup ADB & Auto-Descoberta do Dispositivo
+      # =========================================================================
+      # Este step detecta o dispositivo conectado (USB ou TCP), executa o script
+      # de auto-descoberta e copia os arquivos gerados para o device tree.
+      #
+      # Modos de conexão suportados:
+      #   1. ADB over TCP: secrets ADB_IP + ADB_PORT (dispositivo na rede)
+      #   2. USB direto: aguarda adb devices (requer self-hosted runner com USB)
+      #   3. Fallback: se nenhum dispositivo, usa fallback_vars.sh
+      # =========================================================================
+      - name: Setup ADB & Discover Device
+        id: discover
+        env:
+          ADB_IP: ${{ secrets.ADB_IP }}
+          ADB_PORT: ${{ secrets.ADB_PORT }}
+        run: |
+          echo "============================================================"
+          echo "[CI] Etapa: Auto-descoberta do dispositivo"
+          echo "============================================================"
+
+          # Inicia ADB server
+          adb start-server
+
+          DEVICE_CONNECTED=false
+
+          # --- Modo 1: ADB over TCP (secrets ADB_IP + ADB_PORT) ---
+          if [ -n "${ADB_IP}" ] && [ -n "${ADB_PORT}" ]; then
+            echo "[CI] Modo ADB over TCP detectado: ${ADB_IP}:${ADB_PORT}"
+            echo "[CI] Conectando via adb connect..."
+            adb connect "${ADB_IP}:${ADB_PORT}" || true
+            sleep 3
+
+            # Verifica conexão
+            if adb devices | grep -q "${ADB_IP}"; then
+              echo "[CI] Dispositivo conectado via TCP: ${ADB_IP}:${ADB_PORT}"
+              DEVICE_CONNECTED=true
+            else
+              echo "[CI][WARN] Falha ao conectar via TCP. Tentando USB..."
+            fi
+          fi
+
+          # --- Modo 2: USB direto (aguarda dispositivo) ---
+          if [ "${DEVICE_CONNECTED}" = "false" ]; then
+            echo "[CI] Aguardando dispositivo USB (timeout 30s)..."
+            timeout_val=30
+            elapsed=0
+            while [ "${elapsed}" -lt "${timeout_val}" ]; do
+              if adb devices | awk 'NR>1 && $2=="device"' | grep -q .; then
+                echo "[CI] Dispositivo USB conectado!"
+                DEVICE_CONNECTED=true
+                break
+              fi
+              sleep 2
+              elapsed=$((elapsed + 2))
+            done
+          fi
+
+          # --- Executa descoberta ou fallback ---
+          if [ "${DEVICE_CONNECTED}" = "true" ]; then
+            echo "[CI] Dispositivo conectado. Executando discover_device.sh..."
+            chmod +x scripts/discover_device.sh
+            if bash scripts/discover_device.sh; then
+              echo "[CI] Auto-descoberta CONCLUÍDA com sucesso."
+            else
+              echo "[CI][WARN] discover_device.sh falhou. Usando fallback."
+              chmod +x scripts/fallback_vars.sh
+              bash scripts/fallback_vars.sh
+            fi
+          else
+            echo "[CI][WARN] Nenhum dispositivo conectado. Usando fallback_vars.sh."
+            echo "[CI][WARN] O build continuará com valores estimados (MT6737M genérico)."
+            chmod +x scripts/fallback_vars.sh
+            bash scripts/fallback_vars.sh
+          fi
+
+          # --- Copia arquivos gerados para o device tree ---
+          echo "[CI] Copiando device_vars.mk e device_vars.env para device/lge/mmh6lm/"
+          mkdir -p device/lge/mmh6lm
+          cp -v device_vars.mk device/lge/mmh6lm/device_vars.mk
+          cp -v device_vars.env device/lge/mmh6lm/device_vars.env
+
+          # --- Loga variáveis descobertas para auditoria no CI ---
+          echo "[CI] Variáveis descobertas (device_vars.env):"
+          echo "------------------------------------------------------------"
+          cat device_vars.env
+          echo "------------------------------------------------------------"
+
+          # Exporta variáveis para steps subsequentes
+          # shellcheck disable=SC1090
+          source device_vars.env
+          echo "TARGET_SCREEN_WIDTH=${TARGET_SCREEN_WIDTH}" >> "$GITHUB_ENV"
+          echo "TARGET_SCREEN_HEIGHT=${TARGET_SCREEN_HEIGHT}" >> "$GITHUB_ENV"
+          echo "USB_UDC_NAME=${USB_UDC_NAME}" >> "$GITHUB_ENV"
+
+      # =========================================================================
+      # Step 4: Setup TWRP source tree
+      # =========================================================================
+      - name: Setup TWRP source
+        env:
+          TWRP_BRANCH_INPUT: ${{ github.event.inputs.twrp_branch }}
+        run: |
+          echo "[CI] Branch TWRP: ${TWRP_BRANCH_INPUT:-${TWRP_BRANCH}}"
+
+          # Cria diretório de build
+          TWRP_ROOT="${HOME}/twrp"
+          mkdir -p "${TWRP_ROOT}"
+          cd "${TWRP_ROOT}"
+
+          # Inicializa repo
+          echo "[CI] Inicializando repo manifest..."
+          repo init -u "${TWRP_MANIFEST_URL}" -b "${TWRP_BRANCH_INPUT:-${TWRP_BRANCH}}" --depth=1
+
+          # Sync (com timeout e paralelismo)
+          echo "[CI] Sincronizando fonte (repo sync -j8)..."
+          # Usa --fail-fast para parar em caso de erro crítico
+          repo sync -j8 --fail-fast --force-sync --current-branch --no-tags --no-clone-bundle
+
+          echo "[CI] Source tree pronta em ${TWRP_ROOT}"
+
+      # =========================================================================
+      # Step 5: Copiar device tree local para a fonte TWRP
+      # =========================================================================
+      - name: Copy device tree to TWRP source
+        run: |
+          TWRP_ROOT="${HOME}/twrp"
+
+          echo "[CI] Copiando device tree para ${TWRP_ROOT}/device/lge/mmh6lm/"
+
+          # Cria estrutura de diretórios
+          mkdir -p "${TWRP_ROOT}/device/lge/mmh6lm"
+
+          # Copia BoardConfig.mk
+          cp -v device/lge/mmh6lm/BoardConfig.mk "${TWRP_ROOT}/device/lge/mmh6lm/"
+
+          # Copia device_vars.mk (gerado pela descoberta)
+          cp -v device/lge/mmh6lm/device_vars.mk "${TWRP_ROOT}/device/lge/mmh6lm/"
+
+          # Copia init.rc e init.recovery.mt6739.rc para o ramdisk
+          mkdir -p "${TWRP_ROOT}/rootdir"
+          cp -v rootdir/init.rc "${TWRP_ROOT}/rootdir/"
+          cp -v rootdir/init.recovery.mt6739.rc "${TWRP_ROOT}/rootdir/"
+
+          # Copia kernel pré-compilado
+          # O kernel está em kernel/zImage no root do repo (original do GitHub).
+          # O BoardConfig.mk espera em device/lge/mmh6lm/kernel.
+          # Copiamos direto para o destino no TWRP source.
+          KERNEL_SOURCE="kernel/zImage"
+          KERNEL_TARGET_DIR="${TWRP_ROOT}/device/lge/mmh6lm"
+          if [ -f "${KERNEL_SOURCE}" ]; then
+            echo "[CI] Copiando kernel de ${KERNEL_SOURCE}..."
+            mkdir -p "${KERNEL_TARGET_DIR}"
+            cp -v "${KERNEL_SOURCE}" "${KERNEL_TARGET_DIR}/kernel"
+          elif [ -f "device/lge/mmh6lm/kernel" ]; then
+            echo "[CI] Copiando kernel de device/lge/mmh6lm/kernel..."
+            cp -v device/lge/mmh6lm/kernel "${KERNEL_TARGET_DIR}/"
+          else
+            echo "[CI][WARN] Kernel pré-compilado não encontrado."
+            echo "[CI][WARN] Verifique: kernel/zImage ou device/lge/mmh6lm/kernel"
+          fi
+
+          # Copia recovery.fstab (agora em recovery/root/etc/twrp.fstab)
+          if [ -f "device/lge/mmh6lm/recovery/root/etc/twrp.fstab" ]; then
+            echo "[CI] Copiando twrp.fstab..."
+            mkdir -p "${TWRP_ROOT}/device/lge/mmh6lm/recovery/root/etc"
+            cp -v device/lge/mmh6lm/recovery/root/etc/twrp.fstab "${TWRP_ROOT}/device/lge/mmh6lm/recovery/root/etc/"
+          fi
+          # Fallback: recovery.fstab raiz do device tree
+          if [ -f "device/lge/mmh6lm/recovery.fstab" ]; then
+            cp -v device/lge/mmh6lm/recovery.fstab "${TWRP_ROOT}/device/lge/mmh6lm/"
+          fi
+
+          # Copia AndroidProducts.mk mínimo se não existir na fonte
+          if [ ! -f "${TWRP_ROOT}/device/lge/mmh6lm/AndroidProducts.mk" ]; then
+            echo "[CI] Criando AndroidProducts.mk mínimo..."
+            cat > "${TWRP_ROOT}/device/lge/mmh6lm/AndroidProducts.mk" << 'EOF_PRODUCTS'
+          PRODUCT_MAKEFILES := \
+              $(LOCAL_DIR)/twrp_mmh6lm.mk
+          EOF_PRODUCTS
+          fi
+
+          # Copia twrp_mmh6lm.mk mínimo se não existir
+          if [ ! -f "${TWRP_ROOT}/device/lge/mmh6lm/twrp_mmh6lm.mk" ]; then
+            echo "[CI] Criando twrp_mmh6lm.mk mínimo..."
+            cat > "${TWRP_ROOT}/device/lge/mmh6lm/twrp_mmh6lm.mk" << 'EOF_TWRP'
+          # twrp_mmh6lm.mk - LG K8+ (LM-X120BMW)
+          $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base.mk)
+          PRODUCT_DEVICE := mmh6lm
+          PRODUCT_NAME := twrp_mmh6lm
+          PRODUCT_BRAND := LGE
+          PRODUCT_MODEL := LM-X120BMW
+          PRODUCT_MANUFACTURER := LGE
+          EOF_TWRP
+          fi
+
+          echo "[CI] Device tree copiado com sucesso."
+
+      # =========================================================================
+      # Step 6: Build TWRP recovery image
+      # =========================================================================
+      - name: Build TWRP
+        run: |
+          TWRP_ROOT="${HOME}/twrp"
+          cd "${TWRP_ROOT}"
+
+          echo "[CI] Configurando ambiente de build..."
+          source build/envsetup.sh
+
+          echo "[CI] Selecionando target: twrp_mmh6lm-eng"
+          lunch twrp_mmh6lm-eng
+
+          echo "[CI] Iniciando build recoveryimage (make -j$(nproc))..."
+          echo "[CI] Isso pode levar 1-3 horas dependendo do hardware do runner."
+
+          # Build recoveryimage (alvo principal)
+          if ! make -j"$(nproc)" recoveryimage; then
+            echo "[CI][WARN] make recoveryimage falhou. Tentando bootimage..."
+            make clean
+            if ! make -j"$(nproc)" bootimage; then
+              echo "[CI][ERROR] Build falhou completamente."
+              exit 1
+            fi
+          fi
+
+          echo "[CI] Build CONCLUÍDO com sucesso."
+
+      # =========================================================================
+      # Step 7: Coletar artifacts
+      # =========================================================================
+      - name: Collect artifacts
+        run: |
+          TWRP_ROOT="${HOME}/twrp"
+          ARTIFACTS_DIR="${{ github.workspace }}/artifacts"
+          mkdir -p "${ARTIFACTS_DIR}"
+
+          echo "[CI] Coletando artifacts..."
+
+          # Copia recovery.img
+          RECOVERY_IMG="${TWRP_ROOT}/out/target/product/mmh6lm/recovery.img"
+          if [ -f "${RECOVERY_IMG}" ]; then
+            cp -v "${RECOVERY_IMG}" "${ARTIFACTS_DIR}/recovery.img"
+            echo "[CI] recovery.img copiado."
+          else
+            # Tenta boot.img como alternativa
+            BOOT_IMG="${TWRP_ROOT}/out/target/product/mmh6lm/boot.img"
+            if [ -f "${BOOT_IMG}" ]; then
+              cp -v "${BOOT_IMG}" "${ARTIFACTS_DIR}/recovery.img"
+              echo "[CI][WARN] recovery.img não encontrado, usando boot.img."
+            else
+              echo "[CI][ERROR] Nenhum imagem de recovery/boot encontrada."
+              exit 1
+            fi
+          fi
+
+          # Copia device_vars para auditoria
+          cp -v device_vars.mk "${ARTIFACTS_DIR}/"
+          cp -v device_vars.env "${ARTIFACTS_DIR}/"
+
+          # Gera checksums SHA256
+          cd "${ARTIFACTS_DIR}"
+          sha256sum recovery.img > recovery.img.sha256
+          sha256sum device_vars.mk > device_vars.mk.sha256
+
+          echo "[CI] Checksums gerados:"
+          cat recovery.img.sha256
+
+          # Lista artifacts
+          echo "[CI] Artifacts coletados:"
+          ls -lh "${ARTIFACTS_DIR}/"
+
+      # =========================================================================
+      # Step 8: Upload artifacts
+      # =========================================================================
+      - name: Upload TWRP artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: twrp-lmx120bmw-${{ github.sha }}
+          path: |
+            artifacts/recovery.img
+            artifacts/recovery.img.sha256
+            artifacts/device_vars.mk
+            artifacts/device_vars.env
+            artifacts/device_vars.mk.sha256
+          retention-days: 30
+          compression-level: 0
+
+      # =========================================================================
+      # Step 9: (Opcional) Flash no dispositivo
+      # =========================================================================
+      # Só executa se workflow_dispatch input flash_device=true
+      # Requer dispositivo conectado (USB ou TCP)
+      - name: Flash recovery to device (optional)
+        if: ${{ github.event.inputs.flash_device == 'true' }}
+        env:
+          ADB_IP: ${{ secrets.ADB_IP }}
+          ADB_PORT: ${{ secrets.ADB_PORT }}
+        run: |
+          echo "[CI] Flash recovery.img no dispositivo..."
+
+          # Reconecta se TCP
+          if [ -n "${ADB_IP}" ] && [ -n "${ADB_PORT}" ]; then
+            adb connect "${ADB_IP}:${ADB_PORT}" || true
+          fi
+
+          # Verifica dispositivo
+          if ! adb devices | awk 'NR>1 && $2=="device"' | grep -q .; then
+            echo "[CI][ERROR] Nenhum dispositivo conectado para flash."
+            exit 1
+          fi
+
+          # Reboot para bootloader
+          echo "[CI] Reboot para bootloader (fastboot mode)..."
+          adb reboot bootloader
+          sleep 10
+
+          # Verifica fastboot
+          echo "[CI] Verificando fastboot..."
+          fastboot devices
+
+          # Flash recovery
+          echo "[CI] Flashing recovery.img..."
+          fastboot flash recovery artifacts/recovery.img
+
+          # Reboot
+          echo "[CI] Reboot do dispositivo..."
+          fastboot reboot
+
+          echo "[CI] Flash CONCLUÍDO. Boot em recovery para testar (Vol+Up + Power)."
+
+# =============================================================================
+# Notas de configuração (ver README.md para detalhes completos):
+#
+# 1. ADB_IP + ADB_PORT:
+#    - Para ADB over TCP, ative no dispositivo: `adb tcpip 5555` (requer root ou debug USB)
+#    - Configure nos Secrets do repositório: Settings > Secrets > Actions
+#    - Use um self-hosted runner na mesma rede do dispositivo
+#
+# 2. SSH_PRIVATE_KEY (alternativa):
+#    - Para acessar um runner remoto self-hosted que tem dispositivo USB conectado
+#    - Configure a chave SSH no secret e use appleboy/ssh-action para executar comandos remotos
+#    - O runner remoto deve ter adb instalado e dispositivo conectado via USB
+#
+# 3. Self-hosted runner com label [self-hosted, android-device]:
+#    - Mude runs-on para: runs-on: [self-hosted, android-device]
+#    - Runner dedicado com dispositivo USB sempre conectado
+#    - Melhor opção para CI contínuo
+#
+# 4. Sem dispositivo:
+#    - O pipeline usa fallback_vars.sh automaticamente
+#    - Build funciona mas sem otimizações de hardware específicas
+#    - Útil para validar compilação sem hardware
+#
+# Limitações:
+#   - Build requer ~50GB de espaço em disco
+#   - ~16GB RAM recomendado (8GB mínimo com swap)
+#   - Tempo de build: 1-3 horas em runner padrão do GitHub
+# =============================================================================
