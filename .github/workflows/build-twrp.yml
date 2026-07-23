@@ -115,7 +115,32 @@ jobs:
           git --version
 
       # =========================================================================
-      # Step 3: Setup ADB & Auto-Descoberta do Dispositivo
+      # Step 3: Liberar espaço em disco (runner GitHub tem ~14GB, AOSP precisa ~50GB)
+      # =========================================================================
+      - name: Free disk space
+        run: |
+          echo "[CI] Liberando espaço em disco..."
+          df -h /
+          # Remove dotnet (~5GB)
+          sudo rm -rf /usr/share/dotnet 2>/dev/null || true
+          # Remove Android SDK tools (~15GB)
+          sudo rm -rf /usr/local/lib/android 2>/dev/null || true
+          # Remove Haskell toolchain (~3GB)
+          sudo rm -rf /opt/ghc 2>/dev/null || true
+          # Remove Docker images (~5GB)
+          docker system prune -af 2>/dev/null || true
+          # Remove swap e cache
+          sudo apt-get clean 2>/dev/null || true
+          sudo swapoff -a 2>/dev/null || true
+          # Remove codeql, hosted tools
+          sudo rm -rf /opt/hostedtoolcache/CodeQL 2>/dev/null || true
+          sudo rm -rf /usr/share/swift 2>/dev/null || true
+          sudo rm -rf /usr/local/share/chromium 2>/dev/null || true
+          echo "[CI] Espaço após limpeza:"
+          df -h /
+
+      # =========================================================================
+      # Step 4: Setup ADB & Auto-Descoberta do Dispositivo
       # =========================================================================
       # Este step detecta o dispositivo conectado (USB ou TCP), executa o script
       # de auto-descoberta e copia os arquivos gerados para o device tree.
@@ -212,7 +237,7 @@ jobs:
           echo "USB_UDC_NAME=${USB_UDC_NAME}" >> "$GITHUB_ENV"
 
       # =========================================================================
-      # Step 4: Setup TWRP source tree
+      # Step 5: Setup TWRP source tree
       # =========================================================================
       - name: Setup TWRP source
         env:
@@ -237,7 +262,7 @@ jobs:
           echo "[CI] Source tree pronta em ${TWRP_ROOT}"
 
       # =========================================================================
-      # Step 5: Copiar device tree local para a fonte TWRP
+      # Step 6: Copiar device tree local para a fonte TWRP
       # =========================================================================
       - name: Copy device tree to TWRP source
         run: |
@@ -317,7 +342,7 @@ jobs:
           echo "[CI] Device tree copiado com sucesso."
 
       # =========================================================================
-      # Step 6: Build TWRP recovery image
+      # Step 7: Build TWRP recovery image
       # =========================================================================
       - name: Build TWRP
         run: |
@@ -346,7 +371,7 @@ jobs:
           echo "[CI] Build CONCLUÍDO com sucesso."
 
       # =========================================================================
-      # Step 7: Coletar artifacts
+      # Step 8: Coletar artifacts
       # =========================================================================
       - name: Collect artifacts
         run: |
@@ -390,7 +415,7 @@ jobs:
           ls -lh "${ARTIFACTS_DIR}/"
 
       # =========================================================================
-      # Step 8: Upload artifacts
+      # Step 9: Upload artifacts
       # =========================================================================
       - name: Upload TWRP artifacts
         uses: actions/upload-artifact@v4
