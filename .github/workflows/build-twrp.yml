@@ -254,6 +254,16 @@ jobs:
           echo "[CI] Inicializando repo manifest..."
           repo init -u "${TWRP_MANIFEST_URL}" -b "${TWRP_BRANCH_INPUT:-${TWRP_BRANCH}}" --depth=1
 
+          # Adiciona vendor/twrp se não estiver no manifest
+          mkdir -p .repo/local_manifests
+          cat > .repo/local_manifests/twrp_vendor.xml << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <manifest>
+            <project name="TeamWin/android_vendor_twrp" path="vendor/twrp" revision="android-11" />
+          </manifest>
+          EOF
+          echo "[CI] local_manifest criado para vendor/twrp"
+
           # Sync (com timeout e paralelismo)
           echo "[CI] Sincronizando fonte (repo sync -j8)..."
           # Usa --fail-fast para parar em caso de erro crítico
