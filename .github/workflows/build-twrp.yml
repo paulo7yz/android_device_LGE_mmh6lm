@@ -297,12 +297,15 @@ jobs:
           EOF_PRODUCTS
           fi
 
-          # Copia twrp_mmh6lm.mk mínimo se não existir
-          if [ ! -f "${TWRP_ROOT}/device/lge/mmh6lm/twrp_mmh6lm.mk" ]; then
-            echo "[CI] Criando twrp_mmh6lm.mk mínimo..."
+          # Copia twrp_mmh6lm.mk (do device tree ou gera fallback)
+          if [ -f "device/lge/mmh6lm/twrp_mmh6lm.mk" ]; then
+            echo "[CI] Copiando twrp_mmh6lm.mk do device tree..."
+            cp -v device/lge/mmh6lm/twrp_mmh6lm.mk "${TWRP_ROOT}/device/lge/mmh6lm/"
+          elif [ ! -f "${TWRP_ROOT}/device/lge/mmh6lm/twrp_mmh6lm.mk" ]; then
+            echo "[CI] twrp_mmh6lm.mk não encontrado. Criando fallback..."
             cat > "${TWRP_ROOT}/device/lge/mmh6lm/twrp_mmh6lm.mk" << 'EOF_TWRP'
-          # twrp_mmh6lm.mk - LG K8+ (LM-X120BMW)
-          $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base.mk)
+          # twrp_mmh6lm.mk - LG K8+ (LM-X120BMW) - FALLBACK
+          $(call inherit-product, vendor/twrp/config/common.mk)
           PRODUCT_DEVICE := mmh6lm
           PRODUCT_NAME := twrp_mmh6lm
           PRODUCT_BRAND := LGE

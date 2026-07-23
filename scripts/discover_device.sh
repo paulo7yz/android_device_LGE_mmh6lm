@@ -156,9 +156,9 @@ if [ -z "${SCREEN_WIDTH}" ] || [ -z "${SCREEN_HEIGHT}" ]; then
 fi
 
 if [ -z "${SCREEN_WIDTH}" ] || [ -z "${SCREEN_HEIGHT}" ]; then
-    warn "Não foi possível obter resolução. Usando fallback 720x1280."
-    SCREEN_WIDTH=720
-    SCREEN_HEIGHT=1280
+    warn "Não foi possível obter resolução. Usando fallback 480x960."
+    SCREEN_WIDTH=480
+    SCREEN_HEIGHT=960
 fi
 
 log "  Resolução final: ${SCREEN_WIDTH}x${SCREEN_HEIGHT}"
