@@ -32,15 +32,15 @@ on early-init
 on init
     # --- Propriedades específicas do SoC ---
     setprop ro.hardware mt6739
-    setprop ro.board.platform mt6737m
+    setprop ro.board.platform mt6739
 
     # --- Configuração de framebuffer para MediaTek ---
     # MT6737M usa fb0 direto, sem DRM atomic
     setprop ro.surface_flinger.primary_display_orientation 0
     setprop ro.sf.hwrotation 0
 
-    # --- Configuração de densidade de tela ---
-    setprop ro.sf.lcd_density 320
+    # --- Configuração de densidade de tela (240 dpi via ADB) ---
+    setprop ro.sf.lcd_density 240
 
 on boot
     # --- CORREÇÃO: ro.secure=0 para permitir ADB em recovery ---

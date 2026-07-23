@@ -12,7 +12,6 @@ PRODUCT_NAME := twrp_mmh6lm
 PRODUCT_BRAND := LGE
 PRODUCT_MODEL := LM-X120
 PRODUCT_MANUFACTURER := LGE
-PRODUCT_PLATFORM := mt6739
 
 # --- Propriedades do produto ---
 PRODUCT_BUILD_PROP_OVERRIDES += \
@@ -21,8 +20,6 @@ PRODUCT_BUILD_PROP_OVERRIDES += \
     BUILD_FINGERPRINT=lge/mmh6lm/mmh6lm:9/PKQ1.180904.001/6739900210901:user/release-keys \
     PRIVATE_BUILD_DESC="mmh6lm-user 9 PKQ1.180904.001 6739900210901 release-keys"
 
-# --- fstab e init ---
+# --- fstab (init.rc já é definido por TARGET_RECOVERY_INITRC no BoardConfig) ---
 PRODUCT_COPY_FILES += \
-    device/lge/mmh6lm/recovery/root/etc/twrp.fstab:recovery/root/etc/twrp.fstab \
-    rootdir/init.rc:recovery/root/init.rc \
-    rootdir/init.recovery.mt6739.rc:recovery/root/init.recovery.mt6739.rc
+    device/lge/mmh6lm/recovery/root/etc/twrp.fstab:recovery/root/etc/twrp.fstab

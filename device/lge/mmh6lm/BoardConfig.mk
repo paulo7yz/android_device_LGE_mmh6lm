@@ -150,8 +150,8 @@ TARGET_BOOTLOADER_BOARD_NAME := mt6739
 TARGET_BOARD_PLATFORM := mt6739
 TARGET_BOARD_SUFFIX := _64
 
-# --- system.prop ---
-TARGET_SYSTEM_PROP := device/lge/mmh6lm/system_prop.mk
+# --- system.prop (criado dinamicamente pelo CI, fallback vazio) ---
+TARGET_SYSTEM_PROP ?= device/lge/mmh6lm/system_prop.mk
 
 # =============================================================================
 # Recovery
@@ -166,7 +166,8 @@ TARGET_RECOVERY_LCD_BACKLIGHT_PATH := "/sys/class/leds/lcd-backlight/brightness"
 # =============================================================================
 # Graphics
 # =============================================================================
-BOARD_EGL_CFG := device/lge/mmh6lm/egl.cfg
+# egl.cfg não existe no device tree TWRP
+# BOARD_EGL_CFG := device/lge/mmh6lm/egl.cfg
 USE_OPENGL_RENDERER := true
 TARGET_USES_ION := true
 TARGET_DISABLE_TRIPLE_BUFFERING := false
@@ -174,7 +175,7 @@ TARGET_DISABLE_TRIPLE_BUFFERING := false
 # =============================================================================
 # SELinux (desabilitado em recovery para debug)
 # =============================================================================
-BOARD_SEPOLICY_DIRS += device/lge/mmh6lm/sepolicy
+BOARD_SEPOLICY_DIRS := device/lge/mmh6lm/sepolicy
 TARGET_USES_INTERPRETER_SEPOLICY := true
 
 # =============================================================================

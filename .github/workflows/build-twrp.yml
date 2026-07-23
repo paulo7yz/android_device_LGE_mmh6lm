@@ -259,7 +259,8 @@ jobs:
           cat > .repo/local_manifests/twrp_vendor.xml << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <manifest>
-            <project name="TeamWin/android_vendor_twrp" path="vendor/twrp" revision="android-11" />
+            <remote name="github" fetch="https://github.com/" />
+            <project name="TeamWin/android_vendor_twrp" path="vendor/twrp" revision="android-11" remote="github" />
           </manifest>
           EOF
           echo "[CI] local_manifest criado para vendor/twrp"
