@@ -259,7 +259,7 @@ jobs:
           cat > .repo/local_manifests/twrp_vendor.xml << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <manifest>
-            <remote name="github" fetch="https://github.com/" />
+            <!-- remote github ja existe no manifest principal -->
             <project name="TeamWin/android_vendor_twrp" path="vendor/twrp" revision="android-11" remote="github" />
           </manifest>
           EOF
