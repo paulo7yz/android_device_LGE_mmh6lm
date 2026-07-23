@@ -27,7 +27,9 @@
 # Arquitetura - MT6737M é 32-bit ARM (kernel 64-bit, userspace 32-bit)
 # =============================================================================
 TARGET_ARCH := arm
-TARGET_ARCH_VARIANT := armv7-a-neon
+# CRÍTICO: AOSP 11 (twrp-11) exige armv8-a, não armv7-a-neon.
+# Cortex-A53 do MT6737M suporta ARMv8-A em modo AArch32.
+TARGET_ARCH_VARIANT := armv8-a
 TARGET_CPU_VARIANT := cortex-a53
 TARGET_CPU_ABI := armeabi-v7a
 TARGET_CPU_ABI2 := armeabi

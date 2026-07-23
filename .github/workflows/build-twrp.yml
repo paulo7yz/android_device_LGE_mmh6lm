@@ -203,10 +203,12 @@ jobs:
           echo "------------------------------------------------------------"
 
           # Exporta variáveis para steps subsequentes
+          # NOTA: NÃO exportamos TARGET_SCREEN_WIDTH/HEIGHT aqui.
+          # O BoardConfig.mk já tem defaults corretos (480x960) e as variáveis
+          # exportadas como env var sobrescrevem o operador ?= no Make.
+          # Só exporta USB_UDC_NAME que não tem fallback no BoardConfig.
           # shellcheck disable=SC1090
           source device_vars.env
-          echo "TARGET_SCREEN_WIDTH=${TARGET_SCREEN_WIDTH}" >> "$GITHUB_ENV"
-          echo "TARGET_SCREEN_HEIGHT=${TARGET_SCREEN_HEIGHT}" >> "$GITHUB_ENV"
           echo "USB_UDC_NAME=${USB_UDC_NAME}" >> "$GITHUB_ENV"
 
       # =========================================================================
