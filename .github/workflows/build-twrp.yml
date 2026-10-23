@@ -17,7 +17,7 @@
 #   4. Sem dispositivo - fallback_vars.sh é executado automaticamente
 # =============================================================================
 
-name: "Build TWRP - LG K8+ (LM-X120BMW)"
+name: "Build TWRP - LG X120 (mmh6lm)"
 
 on:
   push:
@@ -45,9 +45,9 @@ on:
           - 'false'
           - 'true'
       twrp_branch:
-        description: 'Branch do manifest TWRP (default: twrp-11)'
+        description: 'Branch do manifest TWRP (default: twrp-9.0)'
         required: false
-        default: 'twrp-11'
+        default: 'twrp-9.0'
         type: string
 
 env:
@@ -59,7 +59,7 @@ env:
   CCACHE_EXEC: /usr/bin/ccache
   # Manifest TWRP
   TWRP_MANIFEST_URL: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git
-  TWRP_BRANCH: twrp-11
+  TWRP_BRANCH: twrp-9.0
 
 jobs:
   build:
@@ -501,3 +501,4 @@ jobs:
 #   - ~16GB RAM recomendado (8GB mínimo com swap)
 #   - Tempo de build: 1-3 horas em runner padrão do GitHub
 # =============================================================================
+
