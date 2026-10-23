@@ -1,0 +1,12 @@
+ro.product.brand=lge
+ro.product.name=mmh6lm
+ro.product.device=mmh6lm
+ro.build.product=mmh6lm
+ro.treble.enabled=true
+persist.sys.usb.config=mtp,adb
+persist.service.adb.enable=1
+persist.service.debuggable=1
+ro.secure=1
+ro.adb.secure=0
+ro.debuggable=1
+ro.allow.mock.location=0
