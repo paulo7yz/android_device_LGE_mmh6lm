@@ -41,13 +41,13 @@ TARGET_PREBUILT_KERNEL := device/lge/mmh6lm/kernel
 
 # --- Boot / recovery header (LEGACY + offset custom LG) ---
 BOARD_KERNEL_CMDLINE := bootopt=64S3,32S1,32S5 buildvariant=userdebug
-BOARD_KERNEL_BASE := 0x40008000
+BOARD_KERNEL_BASE := 0x40000000
 BOARD_KERNEL_OFFSET := 0x00008000
-BOARD_RAMDISK_OFFSET := 0x45000000
+BOARD_RAMDISK_OFFSET := 0x05000000
 BOARD_SECOND_OFFSET := 0x00000000
-BOARD_TAGS_OFFSET := 0x44000000
+BOARD_TAGS_OFFSET := 0x04000000
 BOARD_KERNEL_PAGESIZE := 2048
-BOARD_MKBOOTIMG_ARGS := --kernel_offset 0x00008000 --ramdisk_offset 0x45000000 --second_offset 0x00000000 --tags_offset 0x44000000
+BOARD_MKBOOTIMG_ARGS := --kernel_offset 0x00008000 --ramdisk_offset 0x05000000 --second_offset 0x00000000 --tags_offset 0x04000000
 
 # --- Tela / framebuffer (480x960 HD+ 18:9) ---
 TARGET_SCREEN_WIDTH := 480
@@ -96,6 +96,7 @@ RECOVERY_SDCARD_ON_DATA := true
 TARGET_RECOVERY_FSTAB := device/lge/mmh6lm/recovery/root/system/etc/recovery.fstab
 
 # --- TWRP flags ---
+RECOVERY_VARIANT := twrp
 TW_DEFAULT_LANGUAGE := en
 TW_EXTRA_LANGAGES := false
 TW_EXCLUDE_DEFAULT_USB_INIT := true
