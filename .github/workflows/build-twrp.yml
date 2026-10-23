@@ -304,14 +304,9 @@ jobs:
             fi
           fi
 
-          # Copia device_vars para auditoria
-          cp -v device_vars.mk "${ARTIFACTS_DIR}/"
-          cp -v device_vars.env "${ARTIFACTS_DIR}/"
-
           # Gera checksums SHA256
           cd "${ARTIFACTS_DIR}"
           sha256sum recovery.img > recovery.img.sha256
-          sha256sum device_vars.mk > device_vars.mk.sha256
 
           echo "[CI] Checksums gerados:"
           cat recovery.img.sha256
@@ -330,9 +325,6 @@ jobs:
           path: |
             artifacts/recovery.img
             artifacts/recovery.img.sha256
-            artifacts/device_vars.mk
-            artifacts/device_vars.env
-            artifacts/device_vars.mk.sha256
           retention-days: 30
           compression-level: 0
 

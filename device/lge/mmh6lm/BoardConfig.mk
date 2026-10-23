@@ -93,7 +93,7 @@ BOARD_SUPPRESS_SECURE_ERASE := true
 RECOVERY_SDCARD_ON_DATA := true
 
 # --- fstab do recovery ---
-TARGET_RECOVERY_FSTAB := device/lge/mmh6lm/recovery/root/etc/twrp.fstab
+TARGET_RECOVERY_FSTAB := device/lge/mmh6lm/recovery/root/system/etc/recovery.fstab
 
 # --- TWRP flags ---
 TW_DEFAULT_LANGUAGE := en
