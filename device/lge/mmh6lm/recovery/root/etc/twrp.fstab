@@ -1,50 +1,41 @@
 # =============================================================================
-# TWRP fstab - LG K8+ (LM-X120BMW) / MT6737M
-# Partições do stock LG com bootdevice/by-name
-# Baseado no fstab original do GitHub com paths do stock LG
+# fstab (twrp.fstab) — LG X120 / mmh6lm / MT6739
+# Fonte: extraído de /vendor/etc/fstab.mmh6lm via ADB no aparelho
+# (filesystems reais, não chutes)
 # =============================================================================
 
-# --- Partições do sistema (montadas automaticamente pelo TWRP) ---
-/dev/block/platform/bootdevice/by-name/system        /system       ext2    ro                                                        wait
-/dev/block/platform/bootdevice/by-name/vendor        /vendor       ext4    ro                                                        wait
-/dev/block/platform/bootdevice/by-name/userdata      /data         f2fs    noatime,nosuid,nodev,noauto_da_alloc,discard               wait,check
-/dev/block/platform/bootdevice/by-name/cache         /cache        ext4    noatime,nosuid,nodev,noauto_da_alloc,discard               wait,check
+# --- Montagens de recovery (leitura e escrita) ---
+/dev/block/by-name/system      /system      ext4  rw  backupnorw
+/dev/block/by-name/vendor      /vendor      ext4  rw  backupnorw
+/dev/block/by-name/product     /product     ext4  rw  backupnorw
+/dev/block/by-name/cache       /cache       ext4  rw  backupnorw
+/dev/block/by-name/userdata    /data        f2fs  rw  backupnorw
+/dev/block/by-name/carrier     /carrier     ext4  rw  backupnorw
+/dev/block/by-name/lk          /lk          emmc  rw  backupnosearch
+/dev/block/by-name/lk2         /lk2         emmc  rw  backupnosearch
+/dev/block/by-name/boot        /boot        emmc  rw  backupnosearch
+/dev/block/by-name/recovery    /recovery    emmc  rw  backupnosearch
+/dev/block/by-name/recoverybak /recoverybak emmc  rw  backupnosearch
+/dev/block/by-name/vbmeta      /vbmeta      emmc  rw  backupnosearch
+/dev/block/by-name/dtbo        /dtbo        emmc  rw  backupnosearch
+/dev/block/by-name/para        /para        emmc  rw  backupnosearch
+/dev/block/by-name/misc2       /misc2       emmc  rw  backupnosearch
+/dev/block/by-name/seccfg      /seccfg      emmc  rw  backupnosearch
+/dev/block/by-name/md1img      /md1img      emmc  rw  backupnosearch
+/dev/block/by-name/logo        /logo        emmc  rw  backupnosearch
+/dev/block/by-name/expdb       /expdb       emmc  rw  backupnosearch
+/dev/block/by-name/proinfo     /proinfo     emmc  rw  backupnosearch
+/dev/block/by-name/nvram       /nvram       emmc  rw  backupnosearch
+/dev/block/by-name/nvdata      /nvdata      ext4  rw  backupnosearch
+/dev/block/by-name/nvcfg       /nvcfg       ext4  rw  backupnosearch
+/dev/block/by-name/protect1    /protect1    ext4  rw  backupnosearch
+/dev/block/by-name/protect2    /protect2    ext4  rw  backupnosearch
+/dev/block/by-name/persist     /persist     ext4  rw  backupnosearch
+/dev/block/by-name/persist_lg  /persist_lg  ext4  rw  backupnosearch
+/dev/block/by-name/power       /power       ext4  rw  backupnosearch
+/dev/block/by-name/mpt         /mpt         ext4  rw  backupnosearch
+/dev/block/by-name/frp         /frp         emmc  rw  backupnosearch
 
-# --- Partições de boot ---
-/dev/block/platform/bootdevice/by-name/boot          /boot         emmc    defaults                                                  defaults
-/dev/block/platform/bootdevice/by-name/recovery      /recovery     emmc    defaults                                                  defaults
-
-# --- Partições misc/vendor ---
-/dev/block/platform/bootdevice/by-name/para          /misc         emmc    defaults                                                  defaults
-/dev/block/platform/bootdevice/by-name/misc2         /misc2        emmc    defaults                                                  defaults
-/dev/block/platform/bootdevice/by-name/encrypt       /encrypt      emmc    defaults                                                  defaults
-/dev/block/platform/bootdevice/by-name/eksst         /eksst        emmc    defaults                                                  defaults
-/dev/block/platform/bootdevice/by-name/frp           /persistent   emmc    defaults                                                  defaults
-/dev/block/platform/bootdevice/by-name/persist_lg    /persist-lg   ext4    noatime,nosuid,nodev,noauto_da_alloc,discard               wait,check
-/dev/block/platform/bootdevice/by-name/nvdata        /nvdata       ext4    noatime,nosuid,nodev,noauto_da_alloc,discard               wait,check
-/dev/block/platform/bootdevice/by-name/mpt           /mpt          ext4    noatime,nosuid,nodev,noauto_da_alloc,discard               wait,check
-/dev/block/platform/bootdevice/by-name/power         /power        ext4    noatime,nosuid,nodev,noauto_da_alloc,discard               wait,check
-
-# --- Partição carrier (produto da operadora) ---
-/dev/block/platform/bootdevice/by-name/carrier       /mnt/product/carrier ext4 noatime,nosuid,nodev,noauto_da_alloc,discard            wait,check
-
-# --- Partição OP (Open Partition - LG) ---
-/dev/block/platform/bootdevice/by-name/OP            /product/OP   ext4    ro,noatime,nosuid,nodev,barrier=1,data=ordered,noauto_da_alloc,discard  wait,check,quota
-
-# --- Partições SCP/SSPM/SPM (firmware MediaTek) ---
-/dev/block/platform/bootdevice/by-name/scp1          /scp1         emmc    defaults                                                  defaults
-/dev/block/platform/bootdevice/by-name/scp2          /scp2         emmc    defaults                                                  defaults
-/dev/block/platform/bootdevice/by-name/sspm_1        /sspm_1       emmc    defaults                                                  defaults
-/dev/block/platform/bootdevice/by-name/sspm_2        /sspm_2       emmc    defaults                                                  defaults
-/dev/block/platform/bootdevice/by-name/spmfw         /spmfw        emmc    defaults                                                  defaults
-
-# =============================================================================
-# Storage
-# =============================================================================
-# Suporte a armazenamento externo (se houver SD card)
-# /dev/block/mmcblk1p1     /external_sd    vfat    defaults                                                    defaults
-
-# =============================================================================
-# Flags de montagem para data (essencial para decriptação)
-# =============================================================================
-# /data use o filesystem real (f2fs) com suporte a crypto
+# --- Externo (SD, OTG, flash) ---
+/devices/platform/externdevice*     auto  auto  defaults  voldmanaged=sdcard1:auto
+/devices/platform/11200000.usb0/musb-hdrc/usb*  auto  auto  defaults  voldmanaged=usbotg:auto

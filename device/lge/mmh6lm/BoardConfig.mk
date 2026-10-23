@@ -1,227 +1,136 @@
 # =============================================================================
-# BoardConfig.mk - LG K8+ (LM-X120BMW) / MT6737M (32-bit ARM)
-# TWRP branch android-11
-# =============================================================================
-# Este BoardConfig é DINÂMICO: inclui device_vars.mk gerado pela auto-descoberta
-# (scripts/discover_device.sh) ou pelo fallback (scripts/fallback_vars.sh).
-# As variáveis descobertas têm prioridade; valores abaixo são fallback.
-# =============================================================================
-# CORREÇÕES BUILD #13:
-#   - Resolução corrigida: 480x960 (LM-X120 real) em vez de 720x1280
-#   - TW_THEME: portrait_mdpi (correto para 480x960)
-#   - BOARD_HAS_NO_SELECT_BUTTON := true (LG K8+ só tem volume+power)
-#   - Kernel: device/lge/mmh6lm/kernel/zImage
-#   - fstab: recovery/root/etc/twrp.fstab
-#   - Pixel format: ABGR_8888 (MT6737M/MT6739 exige)
-#   - Recovery partition: 26214400 (25MB, original do stock)
-#   - userdata: f2fs (stock LG usa f2fs, não ext4)
-#   - Crypto: configurado para f2fs
-#   - Platform flags: TARGET_USES_64_BIT_BINDER, TARGET_IS_64_BIT
-#   - MTK_HARDWARE flags
+# BoardConfig.mk — LG X120 / LM-X120BMW (mmh6lm) / MT6739
+#
+# Baseado em dados REAIS extraídos do aparelho via ADB (root Magisk):
+#   ro.board.platform = mt6739, ro.mediatek.platform = MT6739
+#   ro.build.version.release = 9  (SDK 28), fingerprint PKQ1.180904.001
+#   kernel 4.4.146 armv7l (32-bit userspace, 64-bit kernel na prática NÃO é —
+#     uname = armv7l, bootopt=64S3,32N2,32N2 → kernel 32-bit+userspace 32-bit)
+#   framebuffer fb0 virtual_size = 480x2880 (triple buffer) → painel 480x960
+#   fb0 bits_per_pixel não acessível (SELinux); MTK default RGBX 8888/BGRX
+#   UDC = musb-hdrc
+#   Bootloader: state=unlocked (vbmeta.device_state=unlocked)
+#   Kernel zImage extraído de recovery.img @0x800 (0x844076 bytes = 8.67MB)
+#
+# Layout recovery.img ((fonte: hex dump do stock recovery.img):
+#   page_size    = 2048
+#   kernel_addr  = 0x40008000, kernel_size = 0x00844076 (~8.3 MB)
+#   ramdisk_addr = 0x45000000  (ramdisk começa na página 0x845000)
+#   tags_addr    = 0x44000000, dt_size = 0, second = 0
+#   cmdline      = "bootopt=64S3,32S1,32S5 buildvariant=userdebug buildvariant=eng"
+#   LG patchea o campo ramdisk_size no header (valor falso 62); LK lê o
+#   ramdisk da página seguinte ao kernel. Não usamos mkbootimg distro;
+#   geramos recovery.img por repack do stock (ver tools/repack_lg.py).
 # =============================================================================
 
-# --- Inclui variáveis descobertas dinamicamente ---
--include device/lge/mmh6lm/device_vars.mk
-
-# =============================================================================
-# Arquitetura - MT6737M é 32-bit ARM (kernel 64-bit, userspace 32-bit)
-# =============================================================================
+# --- Inclui variáveis estáticas (agora hardcode; nada de auto-descoberta) ---
 TARGET_ARCH := arm
-# CRÍTICO: AOSP 11 (twrp-11) exige armv8-a, não armv7-a-neon.
-# Cortex-A53 do MT6737M suporta ARMv8-A em modo AArch32.
-TARGET_ARCH_VARIANT := armv8-a
+TARGET_ARCH_VARIANT := armv7-a-neon
 TARGET_CPU_VARIANT := cortex-a53
 TARGET_CPU_ABI := armeabi-v7a
 TARGET_CPU_ABI2 := armeabi
 TARGET_CPU_SMP := true
+ARCH_ARM_HAVE_TLS_REGISTER := true
 
-# Kernel é 64-bit, userspace 32-bit (TWRP)
 TARGET_IS_64_BIT := false
-TARGET_USES_64_BIT_BINDER := true
-TARGET_SUPPORTS_64_BIT_APPS := false
+TARGET_USES_64_BIT_BINDER := false
 
-# =============================================================================
-# Tela / Framebuffer
-# =============================================================================
-# LG K8+ (LM-X120BMW) tem display 480x960 (18:9 ratio)
-# device_vars.mk pode sobrescrever com valores reais do dispositivo
-TARGET_SCREEN_WIDTH ?= 480
-TARGET_SCREEN_HEIGHT ?= 960
-
-# TW_THEME:
-#   portrait_mdpi -> 480x800, 540x960 (medium DPI - correto para 480x960)
-#   portrait_hdpi -> 720x1280, 1080x1920 (high DPI)
-TW_THEME := portrait_mdpi
-
-# --- CRÍTICO: evita screen blank que crasha UI em alguns MediaTek ---
-TW_NO_SCREEN_BLANK := true
-
-# --- Framebuffer alpha channel (exigido por MediaTek) ---
-BOARD_USE_FRAMEBUFFER_ALPHA_CHANNEL := true
-
-# --- Gráficos (linelength em vez de stride, comum em MTK) ---
-RECOVERY_GRAPHICS_USE_LINELENGTH := true
-
-# =============================================================================
-# Brilho
-# =============================================================================
-TW_BRIGHTNESS_PATH ?= "/sys/class/leds/lcd-backlight/brightness"
-TW_MAX_BRIGHTNESS ?= 255
-TW_DEFAULT_BRIGHTNESS := 176
-
-# =============================================================================
-# USB / UDC
-# =============================================================================
-USB_UDC_NAME ?= "musb-hdrc"
-
-# =============================================================================
-# Configurações de recovery específicas TWRP
-# =============================================================================
-BOARD_HAS_NO_REAL_SDCARD := true
-BOARD_HAS_LARGE_FILESYSTEM := true
-BOARD_SUPPRESS_SECURE_ERASE := true
-RECOVERY_SDCARD_ON_DATA := true
-TW_INCLUDE_NTFS_3G := true
-TW_INCLUDE_EXFAT := true
-TW_INCLUDE_FUSE_EXFAT := true
-TWRP_INCLUDE_LOGCAT := true
-TARGET_USES_LOGD := true
-TW_DEFAULT_LANGUAGE := en
-TW_EXTRA_LANGUAGES := true
-
-# --- Botão de seleção ---
-# LG K8+ NÃO tem botão de seleção (select/home). Só volume + power.
-# BOARD_HAS_NO_SELECT_BUTTON=true faz TWRP usar volume keys como seleção.
-BOARD_HAS_NO_SELECT_BUTTON := true
-
-# --- Habilita ADB em recovery ---
-TW_INCLUDE_ADB := true
-TW_EXCLUDE_TWRPAPP := true
-TW_EXCLUDE_SUPERSU := true
-TW_USE_TOOLBOX := false
-
-# --- Input ---
-TW_INPUT_BLACKLIST := "hbtp_vm"
-
-# =============================================================================
-# Kernel - MT6737M pré-compilado (LG K8+ usa kernel 3.18.x)
-# =============================================================================
-BOARD_KERNEL_CMDLINE := bootopt=64S3,32S1,32S5 buildvariant=userdebug
-
-# Valores de base/offset do stock LG K8+
-BOARD_KERNEL_BASE := 0x40000000
-BOARD_KERNEL_OFFSET := 0x00008000
-BOARD_RAMDISK_OFFSET := 0x05000000
-BOARD_SECOND_OFFSET := 0x00f00000
-BOARD_TAGS_OFFSET := 0x04000000
-BOARD_KERNEL_PAGESIZE := 2048
-
-BOARD_MKBOOTIMG_ARGS := --kernel_offset 0x00008000 --ramdisk_offset 0x05000000 --second_offset 0x00f00000 --tags_offset 0x04000000
-
-# Kernel pré-compilado do stock
-# Está em kernel/zImage no repo, copiado pelo CI para device/lge/mmh6lm/kernel
+# --- Kernel pré-compilado extraído do stock recovery/boot ---
 TARGET_PREBUILT_KERNEL := device/lge/mmh6lm/kernel
 
-# =============================================================================
-# Partições - LG K8+ (16GB storage)
-# =============================================================================
+# --- Boot / recovery header (LEGACY + offset custom LG) ---
+BOARD_KERNEL_CMDLINE := bootopt=64S3,32S1,32S5 buildvariant=userdebug
+BOARD_KERNEL_BASE := 0x40008000
+BOARD_KERNEL_OFFSET := 0x00008000
+BOARD_RAMDISK_OFFSET := 0x45000000
+BOARD_SECOND_OFFSET := 0x00000000
+BOARD_TAGS_OFFSET := 0x44000000
+BOARD_KERNEL_PAGESIZE := 2048
+BOARD_MKBOOTIMG_ARGS := --kernel_offset 0x00008000 --ramdisk_offset 0x45000000 --second_offset 0x00000000 --tags_offset 0x44000000
+
+# --- Tela / framebuffer (480x960 HD+ 18:9) ---
+TARGET_SCREEN_WIDTH := 480
+TARGET_SCREEN_HEIGHT := 960
+TW_THEME := portrait_mdpi
+TW_NO_SCREEN_BLANK := true
+BOARD_USE_FRAMEBUFFER_ALPHA_CHANNEL := true
+RECOVERY_GRAPHICS_USE_LINELENGTH := true
+TARGET_RECOVERY_PIXEL_FORMAT := "RGBX_8888"
+
+# --- Brilho ---
+TW_BRIGHTNESS_PATH := "/sys/class/leds/lcd-backlight/brightness"
+TW_MAX_BRIGHTNESS := 255
+TW_DEFAULT_BRIGHTNESS := 150
+
+# --- USB / UDC ---
+TW_INCLUDE_CRYPTO := true
+
+# --- Botões de seleção ---
+BOARD_HAS_NO_SELECT_BUTTON := true
+
+# --- Partições (do /proc/partitions + by-name real) ---
 BOARD_BOOTIMAGE_PARTITION_SIZE := 16777216
 BOARD_RECOVERYIMAGE_PARTITION_SIZE := 26214400
 BOARD_SYSTEMIMAGE_PARTITION_SIZE := 1845493760
-BOARD_USERDATAIMAGE_PARTITION_SIZE := 12154568704
-BOARD_CACHEIMAGE_PARTITION_SIZE := 452984832
+BOARD_USERDATAIMAGE_PARTITION_SIZE := 12085227520
+BOARD_CACHEIMAGE_PARTITION_SIZE := 528482304
 BOARD_FLASH_BLOCK_SIZE := 131072
+BOARD_VENDORIMAGE_PARTITION_SIZE := 251658240
+BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
+TARGET_COPY_OUT_VENDOR := vendor
 
-# --- Filesystems (LG stock usa ext2 para system, f2fs para userdata) ---
-BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := ext2
+# --- Filesystems REAIS do fstab de vendor ---
+BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := f2fs
 BOARD_CACHEIMAGE_FILE_SYSTEM_TYPE := ext4
-TARGET_USERIMAGES_USE_EXT4 := false
+TARGET_USERIMAGES_USE_EXT4 := true
+TARGET_USERIMAGES_USE_F2FS := true
 
-# =============================================================================
-# Configurações de build e plataforma
-# =============================================================================
+BOARD_HAS_LARGE_FILESYSTEM := true
+BOARD_HAS_NO_REAL_SDCARD := true
+BOARD_SUPPRESS_SECURE_ERASE := true
+RECOVERY_SDCARD_ON_DATA := true
+
+# --- fstab do recovery ---
+TARGET_RECOVERY_FSTAB := device/lge/mmh6lm/recovery/root/etc/twrp.fstab
+
+# --- TWRP flags ---
+TW_DEFAULT_LANGUAGE := en
+TW_EXTRA_LANGAGES := false
+TW_EXCLUDE_DEFAULT_USB_INIT := true
+TARGET_USES_LOGD := true
+TWRP_INCLUDE_LOGCAT := true
+TW_INPUT_BLACKLIST := "hbtp_vm"
+TW_EXCLUDE_TWRPAPP := true
+TW_EXCLUDE_SUPERSU := true
+TW_INPUT_BLACKLIST := "hbtp_vm"
+TW_LOW_RES_SUPPORT := true
+TW_USE_TOOLBOX := true
+
+# --- SELinux / MTK ---
 BOARD_HAS_MTK_HARDWARE := true
 BOARD_USES_MTK_HARDWARE := true
+MTK_DYNAMIC_KERNEL := true
 MTK_HARDWARE := true
-BOARD_USES_MTK_AUDIO := true
-TARGET_NO_BOOTLOADER := true
+
 TARGET_BOOTLOADER_BOARD_NAME := mt6739
 TARGET_BOARD_PLATFORM := mt6739
-TARGET_BOARD_SUFFIX := _64
+TARGET_NO_BOOTLOADER := true
 
-# --- system.prop (criado dinamicamente pelo CI, fallback vazio) ---
-TARGET_SYSTEM_PROP ?= device/lge/mmh6lm/system_prop.mk
-
-# =============================================================================
-# Recovery
-# =============================================================================
-TARGET_RECOVERY_FSTAB := device/lge/mmh6lm/recovery/root/etc/twrp.fstab
-TARGET_RECOVERY_INITRC := rootdir/init.rc
-TARGET_RECOVERY_PIXEL_FORMAT := "ABGR_8888"
-
-# --- Backlight path ---
-TARGET_RECOVERY_LCD_BACKLIGHT_PATH := "/sys/class/leds/lcd-backlight/brightness"
-
-# =============================================================================
-# Graphics
-# =============================================================================
-# egl.cfg não existe no device tree TWRP
-# BOARD_EGL_CFG := device/lge/mmh6lm/egl.cfg
-USE_OPENGL_RENDERER := true
-TARGET_USES_ION := true
-TARGET_DISABLE_TRIPLE_BUFFERING := false
-
-# =============================================================================
-# SELinux (desabilitado em recovery para debug)
-# =============================================================================
-BOARD_SEPOLICY_DIRS := device/lge/mmh6lm/sepolicy
-TARGET_USES_INTERPRETER_SEPOLICY := true
-
-# =============================================================================
-# Encryption
-# =============================================================================
+# --- Encryption (FBE) ---
 TW_INCLUDE_CRYPTO := true
 TW_CRYPTO_FS_TYPE := "f2fs"
 TW_CRYPTO_REAL_BLKDEV := "/dev/block/platform/bootdevice/by-name/userdata"
 TW_CRYPTO_MNT_POINT := "/data"
-TW_CRYPTO_FS_OPTIONS := "rw,lazytime,seclabel,nosuid,nodev,noatime,background_gc=on,no_heap,user_xattr,inline_xattr,acl,inline_data,inline_dentry,flush_merge,extent_cache,mode=adaptive,active_logs=6,reserve_root=32768,resuid=0,resgid=1065,alloc_mode=reuse,fsync_mode=posix"
-PLATFORM_SECURITY_PATCH := 2021-09-01
+TW_CRYPTO_FS_OPTIONS := "rw,noatime,nosuid,nodev,discard,noflush_merge,rsv_percent=0"
+TW_NOTHW_ENCRYPTION := true
 
-# =============================================================================
-# Flags de compatibilidade Android 11 / TWRP
-# =============================================================================
+# --- Compatibilidade de build ---
 ALLOW_MISSING_DEPENDENCIES := true
-BUILD_BROKEN_DUP_RULES := true
 BUILD_BROKEN_USES_BUILD := true
+BUILD_BROKEN_DUP_RULES := true
 BUILD_BROKEN_MISSING_REQUIRED_MODULES := true
 
-# =============================================================================
-# Vendor image
-# =============================================================================
-BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := ext4
-TARGET_COPY_OUT_VENDOR := vendor
-
-# =============================================================================
-# Jack compiler (32-bit precisa de mais heap)
-# =============================================================================
-ANDROID_JACK_VM_SIZE := 4g
-
-# =============================================================================
-# CCache
-# =============================================================================
-USE_CCACHE := true
+# --- ccache ---
+USE_CCACHE := 1
 CCACHE_EXEC := /usr/bin/ccache
-
-# =============================================================================
-# Resumo de variáveis dinâmicas (para debug no log de build)
-# =============================================================================
-# As seguintes variáveis são injetadas por device_vars.mk:
-#   TARGET_SCREEN_WIDTH   - largura do framebuffer (default: 480)
-#   TARGET_SCREEN_HEIGHT  - altura do framebuffer (default: 960)
-#   TW_BRIGHTNESS_PATH    - caminho do sysfs de brilho (default: lcd-backlight)
-#   TW_MAX_BRIGHTNESS     - brilho máximo (default: 255)
-#   USB_UDC_NAME          - controlador USB (default: musb-hdrc)
-#   RO_HARDWARE           - ro.hardware do dispositivo (default: mmh6lm)
-#   RO_BOARD_PLATFORM     - plataforma do SoC (default: mt6739)
-# =============================================================================
