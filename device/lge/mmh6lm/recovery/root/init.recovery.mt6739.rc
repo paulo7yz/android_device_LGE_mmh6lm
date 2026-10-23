@@ -1,0 +1,46 @@
+# init.recovery.mt6739.rc — LG X120 (mmh6lm) / MT6739
+# Baseado no Samsung A01 Core (TWRP 11 / MT6739) como referência
+# Adaptado para LG X120: USB ConfigFS via musb-hdrc, fb0 480x960
+
+on early-init
+    # Framebuffer — permissões para a UI do TWRP
+    chmod 0666 /dev/graphics/fb0
+    chown system graphics /dev/graphics/fb0
+    chmod 0666 /dev/fb0
+    chown system graphics /dev/fb0
+
+    # Input (touchscreen event2)
+    chmod 0666 /dev/input/event0
+    chmod 0666 /dev/input/event1
+    chmod 0666 /dev/input/event2
+
+on init
+    setprop ro.hardware mt6739
+    setprop ro.board.platform mt6739
+
+on post-fs-data
+    # Symlinks do preloader (compatibilidade A/B)
+    symlink /dev/block/mmcblk0boot0 /dev/block/platform/bootdevice/by-name/preloader_a
+    symlink /dev/block/mmcblk0boot1 /dev/block/platform/bootdevice/by-name/preloader_b
+
+on boot
+    # SELinux permissivo no recovery
+    setprop ro.secure 0
+    setprop ro.adb.secure 0
+    setprop ro.debuggable 1
+
+    # Brilho
+    write /sys/class/leds/lcd-backlight/brightness 150
+
+    # Input permissions (re-aplicado)
+    chmod 0666 /dev/input/event0
+    chmod 0666 /dev/input/event1
+    chmod 0666 /dev/input/event2
+
+    # Framebuffer permissions (re-aplicado)
+    chmod 0666 /dev/graphics/fb0
+    chown system graphics /dev/graphics/fb0
+
+    # Inicia USB
+    setprop sys.usb.configfs 1
+    setprop sys.usb.config mtp,adb

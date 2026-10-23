@@ -1,10 +1,11 @@
-# Android fstab file.
-# <src>                                                 <mnt_point>     <type>      <mnt_flags and options>                               <fs_mgr_flags>
-/dev/block/platform/bootdevice/by-name/system          /system         ext4        ro                                                    wait,recoveryonly
-/dev/block/platform/bootdevice/by-name/vendor          /vendor         ext4        ro                                                    wait,recoveryonly
-/dev/block/platform/bootdevice/by-name/product         /product        ext4        ro                                                    wait,recoveryonly
-/dev/block/platform/bootdevice/by-name/userdata        /data           f2fs        noatime,nosuid,nodev                                  wait,check,formattable,fileencryption=aes-256-xts:aes-256-cts
-/dev/block/platform/bootdevice/by-name/cache           /cache          ext4        noatime,nosuid,nodev,noauto_da_alloc,discard          wait,check,formattable
-/dev/block/platform/bootdevice/by-name/boot            /boot           emmc        defaults                                              defaults
-/dev/block/platform/bootdevice/by-name/recovery        /recovery       emmc        defaults                                              defaults
-/dev/block/platform/bootdevice/by-name/para            /misc           emmc        defaults                                              defaults
+# recovery.fstab — LG X120 (mmh6lm) / MT6739
+# Baseado no fstab real extraído de /vendor/etc/fstab.mmh6lm via ADB (root)
+#<src>                                                   <mnt_point>  <type>  <mnt_flags and options>                                    <fs_mgr_flags>
+/dev/block/platform/bootdevice/by-name/system           /system      ext4    ro,barrier=1                                               wait,recoveryonly
+/dev/block/platform/bootdevice/by-name/vendor           /vendor      ext4    ro,barrier=1                                               wait,recoveryonly
+/dev/block/platform/bootdevice/by-name/product          /product     ext4    ro,barrier=1                                               wait,recoveryonly
+/dev/block/platform/bootdevice/by-name/userdata         /data        f2fs    noatime,nosuid,nodev,discard                               wait,check,formattable
+/dev/block/platform/bootdevice/by-name/cache            /cache       ext4    noatime,nosuid,nodev,noauto_da_alloc,discard               wait,check,formattable
+/dev/block/platform/bootdevice/by-name/boot             /boot        emmc    defaults                                                   defaults
+/dev/block/platform/bootdevice/by-name/recovery         /recovery    emmc    defaults                                                   defaults
+/dev/block/platform/bootdevice/by-name/para             /misc        emmc    defaults                                                   defaults

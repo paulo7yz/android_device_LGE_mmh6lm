@@ -1,0 +1,62 @@
+firmware_directories /etc/firmware/ /odm/firmware/ /vendor/firmware/ /firmware/image/
+uevent_socket_rcvbuf_size 16M
+
+subsystem graphics
+    devname uevent_devpath
+    dirname /dev/graphics
+
+subsystem drm
+    devname uevent_devpath
+    dirname /dev/dri
+
+subsystem input
+    devname uevent_devpath
+    dirname /dev/input
+
+subsystem sound
+    devname uevent_devpath
+    dirname /dev/snd
+
+/dev/null                 0666   root       root
+/dev/zero                 0666   root       root
+/dev/full                 0666   root       root
+/dev/ptmx                 0666   root       root
+/dev/tty                  0666   root       root
+/dev/random               0666   root       root
+/dev/urandom              0666   root       root
+/dev/ashmem               0666   root       root
+/dev/binder               0666   root       root
+/dev/hwbinder             0666   root       root
+/dev/vndbinder            0666   root       root
+/dev/pmsg0                0222   root       log
+
+/dev/dri/*                0666   root       graphics
+/dev/uhid                 0660   uhid       uhid
+/dev/uinput               0660   uhid       uhid
+/dev/rtc0                 0640   system     system
+/dev/graphics/*           0666   root       graphics
+/dev/input/*              0660   root       input
+/dev/snd/*                0660   system     audio
+/dev/bus/usb/*            0660   root       usb
+/dev/mtp_usb              0660   root       mtp
+/dev/tun                  0660   system     vpn
+/dev/ppp                  0660   radio      vpn
+
+# MTK specific
+/dev/mtk_mdp              0666   system     system
+/dev/DW_apb_uart0         0660   radio      radio
+/dev/ttyMT0               0660   root       radio
+/dev/ttyMT1               0660   root       radio
+/dev/ttyMT2               0660   root       radio
+
+# Framebuffer
+/dev/graphics/fb0         0666   system     graphics
+/dev/fb0                  0666   system     graphics
+
+# Input
+/dev/input/event*         0666   root       input
+
+/sys/devices/virtual/input/input*   enable      0660  system   input
+/sys/devices/virtual/input/input*   poll_delay  0660  system   input
+/sys/devices/system/cpu/cpu*   cpufreq/scaling_max_freq   0664  system system
+/sys/devices/system/cpu/cpu*   cpufreq/scaling_min_freq   0664  system system
