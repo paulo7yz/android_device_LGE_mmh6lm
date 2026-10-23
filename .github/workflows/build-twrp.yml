@@ -149,96 +149,10 @@ jobs:
       #   1. ADB over TCP: secrets ADB_IP + ADB_PORT (dispositivo na rede)
       #   2. USB direto: aguarda adb devices (requer self-hosted runner com USB)
       #   3. Fallback: se nenhum dispositivo, usa fallback_vars.sh
-      # =========================================================================
-      - name: Setup ADB & Discover Device
-        id: discover
-        env:
-          ADB_IP: ${{ secrets.ADB_IP }}
-          ADB_PORT: ${{ secrets.ADB_PORT }}
+      - name: Skip auto-discovery (valores fixos no BoardConfig real via adb)
         run: |
-          echo "============================================================"
-          echo "[CI] Etapa: Auto-descoberta do dispositivo"
-          echo "============================================================"
+          echo "[CI] Auto-descoberta removida - BoardConfig tem dados do dump adb (MT6739, armv7, 480x960, f2fs+FBE)."
 
-          # Inicia ADB server
-          adb start-server
-
-          DEVICE_CONNECTED=false
-
-          # --- Modo 1: ADB over TCP (secrets ADB_IP + ADB_PORT) ---
-          if [ -n "${ADB_IP}" ] && [ -n "${ADB_PORT}" ]; then
-            echo "[CI] Modo ADB over TCP detectado: ${ADB_IP}:${ADB_PORT}"
-            echo "[CI] Conectando via adb connect..."
-            adb connect "${ADB_IP}:${ADB_PORT}" || true
-            sleep 3
-
-            # Verifica conexão
-            if adb devices | grep -q "${ADB_IP}"; then
-              echo "[CI] Dispositivo conectado via TCP: ${ADB_IP}:${ADB_PORT}"
-              DEVICE_CONNECTED=true
-            else
-              echo "[CI][WARN] Falha ao conectar via TCP. Tentando USB..."
-            fi
-          fi
-
-          # --- Modo 2: USB direto (aguarda dispositivo) ---
-          if [ "${DEVICE_CONNECTED}" = "false" ]; then
-            echo "[CI] Aguardando dispositivo USB (timeout 30s)..."
-            timeout_val=30
-            elapsed=0
-            while [ "${elapsed}" -lt "${timeout_val}" ]; do
-              if adb devices | awk 'NR>1 && $2=="device"' | grep -q .; then
-                echo "[CI] Dispositivo USB conectado!"
-                DEVICE_CONNECTED=true
-                break
-              fi
-              sleep 2
-              elapsed=$((elapsed + 2))
-            done
-          fi
-
-          # --- Executa descoberta ou fallback ---
-          if [ "${DEVICE_CONNECTED}" = "true" ]; then
-            echo "[CI] Dispositivo conectado. Executando discover_device.sh..."
-            chmod +x scripts/discover_device.sh
-            if bash scripts/discover_device.sh; then
-              echo "[CI] Auto-descoberta CONCLUÍDA com sucesso."
-            else
-              echo "[CI][WARN] discover_device.sh falhou. Usando fallback."
-              chmod +x scripts/fallback_vars.sh
-              bash scripts/fallback_vars.sh
-            fi
-          else
-            echo "[CI][WARN] Nenhum dispositivo conectado. Usando fallback_vars.sh."
-            echo "[CI][WARN] O build continuará com valores estimados (MT6737M genérico)."
-            chmod +x scripts/fallback_vars.sh
-            bash scripts/fallback_vars.sh
-          fi
-
-          # --- Copia arquivos gerados para o device tree ---
-          echo "[CI] Copiando device_vars.mk e device_vars.env para device/lge/mmh6lm/"
-          mkdir -p device/lge/mmh6lm
-          cp -v device_vars.mk device/lge/mmh6lm/device_vars.mk
-          cp -v device_vars.env device/lge/mmh6lm/device_vars.env
-
-          # --- Loga variáveis descobertas para auditoria no CI ---
-          echo "[CI] Variáveis descobertas (device_vars.env):"
-          echo "------------------------------------------------------------"
-          cat device_vars.env
-          echo "------------------------------------------------------------"
-
-          # Exporta variáveis para steps subsequentes
-          # NOTA: NÃO exportamos TARGET_SCREEN_WIDTH/HEIGHT aqui.
-          # O BoardConfig.mk já tem defaults corretos (480x960) e as variáveis
-          # exportadas como env var sobrescrevem o operador ?= no Make.
-          # Só exporta USB_UDC_NAME que não tem fallback no BoardConfig.
-          # shellcheck disable=SC1090
-          source device_vars.env
-          echo "USB_UDC_NAME=${USB_UDC_NAME}" >> "$GITHUB_ENV"
-
-      # =========================================================================
-      # Step 5: Setup TWRP source tree
-      # =========================================================================
       - name: Setup TWRP source
         env:
           TWRP_BRANCH_INPUT: ${{ github.event.inputs.twrp_branch }}
@@ -275,14 +189,6 @@ jobs:
 
           # Copia BoardConfig.mk
           cp -v device/lge/mmh6lm/BoardConfig.mk "${TWRP_ROOT}/device/lge/mmh6lm/"
-
-          # Copia device_vars.mk (gerado pela descoberta)
-          cp -v device/lge/mmh6lm/device_vars.mk "${TWRP_ROOT}/device/lge/mmh6lm/"
-
-          # Copia init.rc e init.recovery.mt6739.rc para o ramdisk
-          mkdir -p "${TWRP_ROOT}/rootdir"
-          cp -v rootdir/init.rc "${TWRP_ROOT}/rootdir/"
-          cp -v rootdir/init.recovery.mt6739.rc "${TWRP_ROOT}/rootdir/"
 
           # Copia kernel pré-compilado
           # O kernel está em kernel/zImage no root do repo (original do GitHub).
