@@ -24,8 +24,9 @@
 # =============================================================================
 
 # --- Inclui variáveis estáticas (agora hardcode; nada de auto-descoberta) ---
+# AOSP 11 exige armv8-a para arm 32-bit (Cortex-A53 roda AArch32)
 TARGET_ARCH := arm
-TARGET_ARCH_VARIANT := armv7-a-neon
+TARGET_ARCH_VARIANT := armv8-a
 TARGET_CPU_VARIANT := cortex-a53
 TARGET_CPU_ABI := armeabi-v7a
 TARGET_CPU_ABI2 := armeabi
