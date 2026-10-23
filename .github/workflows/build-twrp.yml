@@ -184,65 +184,19 @@ jobs:
 
           echo "[CI] Copiando device tree para ${TWRP_ROOT}/device/lge/mmh6lm/"
 
-          # Cria estrutura de diretórios
-          mkdir -p "${TWRP_ROOT}/device/lge/mmh6lm"
+          # Copia PASTA INTEIRA (preserva layout recovery/root/system/etc/)
+          mkdir -p "${TWRP_ROOT}/device/lge"
+          rm -rf "${TWRP_ROOT}/device/lge/mmh6lm"
+          rsync -a device/lge/mmh6lm/ "${TWRP_ROOT}/device/lge/mmh6lm/"
 
-          # Copia BoardConfig.mk
-          cp -v device/lge/mmh6lm/BoardConfig.mk "${TWRP_ROOT}/device/lge/mmh6lm/"
-
-          # Copia kernel pré-compilado
-          # O kernel está em kernel/zImage no root do repo (original do GitHub).
-          # O BoardConfig.mk espera em device/lge/mmh6lm/kernel.
-          # Copiamos direto para o destino no TWRP source.
-          KERNEL_SOURCE="kernel/zImage"
-          KERNEL_TARGET_DIR="${TWRP_ROOT}/device/lge/mmh6lm"
-          if [ -f "${KERNEL_SOURCE}" ]; then
-            echo "[CI] Copiando kernel de ${KERNEL_SOURCE}..."
-            mkdir -p "${KERNEL_TARGET_DIR}"
-            cp -v "${KERNEL_SOURCE}" "${KERNEL_TARGET_DIR}/kernel"
-          elif [ -f "device/lge/mmh6lm/kernel" ]; then
-            echo "[CI] Copiando kernel de device/lge/mmh6lm/kernel..."
-            cp -v device/lge/mmh6lm/kernel "${KERNEL_TARGET_DIR}/"
-          else
-            echo "[CI][WARN] Kernel pré-compilado não encontrado."
-            echo "[CI][WARN] Verifique: kernel/zImage ou device/lge/mmh6lm/kernel"
+          #.telegram_confirm
+          if [ ! -f "${TWRP_ROOT}/device/lge/mmh6lm/recovery/root/system/etc/recovery.fstab" ]; then
+            echo "[CI][ERROR] recovery.fstab não está em recovery/root/system/etc/"
+            exit 1
           fi
-
-          # Copia recovery.fstab (agora em recovery/root/etc/twrp.fstab)
-          if [ -f "device/lge/mmh6lm/recovery/root/etc/twrp.fstab" ]; then
-            echo "[CI] Copiando twrp.fstab..."
-            mkdir -p "${TWRP_ROOT}/device/lge/mmh6lm/recovery/root/etc"
-            cp -v device/lge/mmh6lm/recovery/root/etc/twrp.fstab "${TWRP_ROOT}/device/lge/mmh6lm/recovery/root/etc/"
-          fi
-          # Fallback: recovery.fstab raiz do device tree
-          if [ -f "device/lge/mmh6lm/recovery.fstab" ]; then
-            cp -v device/lge/mmh6lm/recovery.fstab "${TWRP_ROOT}/device/lge/mmh6lm/"
-          fi
-
-          # Copia AndroidProducts.mk mínimo se não existir na fonte
-          if [ ! -f "${TWRP_ROOT}/device/lge/mmh6lm/AndroidProducts.mk" ]; then
-            echo "[CI] Criando AndroidProducts.mk mínimo..."
-            cat > "${TWRP_ROOT}/device/lge/mmh6lm/AndroidProducts.mk" << 'EOF_PRODUCTS'
-          PRODUCT_MAKEFILES := \
-              $(LOCAL_DIR)/twrp_mmh6lm.mk
-          EOF_PRODUCTS
-          fi
-
-          # Copia twrp_mmh6lm.mk (do device tree ou gera fallback)
-          if [ -f "device/lge/mmh6lm/twrp_mmh6lm.mk" ]; then
-            echo "[CI] Copiando twrp_mmh6lm.mk do device tree..."
-            cp -v device/lge/mmh6lm/twrp_mmh6lm.mk "${TWRP_ROOT}/device/lge/mmh6lm/"
-          elif [ ! -f "${TWRP_ROOT}/device/lge/mmh6lm/twrp_mmh6lm.mk" ]; then
-            echo "[CI] twrp_mmh6lm.mk não encontrado. Criando fallback..."
-            cat > "${TWRP_ROOT}/device/lge/mmh6lm/twrp_mmh6lm.mk" << 'EOF_TWRP'
-          # twrp_mmh6lm.mk - LG K8+ (LM-X120BMW) - FALLBACK
-          $(call inherit-product, vendor/twrp/config/common.mk)
-          PRODUCT_DEVICE := mmh6lm
-          PRODUCT_NAME := twrp_mmh6lm
-          PRODUCT_BRAND := LGE
-          PRODUCT_MODEL := LM-X120BMW
-          PRODUCT_MANUFACTURER := LGE
-          EOF_TWRP
+          if [ ! -f "${TWRP_ROOT}/device/lge/mmh6lm/kernel" ]; then
+            echo "[CI][ERROR] kernel prebuilt ausente"
+            exit 1
           fi
 
           echo "[CI] Device tree copiado com sucesso."
@@ -264,15 +218,8 @@ jobs:
           echo "[CI] Iniciando build recoveryimage (make -j$(nproc))..."
           echo "[CI] Isso pode levar 1-3 horas dependendo do hardware do runner."
 
-          # Build recoveryimage (alvo principal)
-          if ! make -j"$(nproc)" recoveryimage; then
-            echo "[CI][WARN] make recoveryimage falhou. Tentando bootimage..."
-            make clean
-            if ! make -j"$(nproc)" bootimage; then
-              echo "[CI][ERROR] Build falhou completamente."
-              exit 1
-            fi
-          fi
+          # Build recoveryimage (alvo principal) — SEM fallback de bootimage
+          make -j"$(nproc)" recoveryimage
 
           echo "[CI] Build CONCLUÍDO com sucesso."
 
@@ -289,20 +236,12 @@ jobs:
 
           # Copia recovery.img
           RECOVERY_IMG="${TWRP_ROOT}/out/target/product/mmh6lm/recovery.img"
-          if [ -f "${RECOVERY_IMG}" ]; then
-            cp -v "${RECOVERY_IMG}" "${ARTIFACTS_DIR}/recovery.img"
-            echo "[CI] recovery.img copiado."
-          else
-            # Tenta boot.img como alternativa
-            BOOT_IMG="${TWRP_ROOT}/out/target/product/mmh6lm/boot.img"
-            if [ -f "${BOOT_IMG}" ]; then
-              cp -v "${BOOT_IMG}" "${ARTIFACTS_DIR}/recovery.img"
-              echo "[CI][WARN] recovery.img não encontrado, usando boot.img."
-            else
-              echo "[CI][ERROR] Nenhum imagem de recovery/boot encontrada."
-              exit 1
-            fi
+          if [ ! -f "${RECOVERY_IMG}" ]; then
+            echo "[CI][ERROR] recovery.img não encontrado (build falhou)."
+            exit 1
           fi
+          cp -v "${RECOVERY_IMG}" "${ARTIFACTS_DIR}/recovery.img"
+          echo "[CI] recovery.img copiado."
 
           # Gera checksums SHA256
           cd "${ARTIFACTS_DIR}"
