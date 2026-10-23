@@ -59,7 +59,7 @@ env:
   CCACHE_EXEC: /usr/bin/ccache
   # Manifest TWRP
   TWRP_MANIFEST_URL: https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git
-  TWRP_BRANCH: twrp-9.0
+  TWRP_BRANCH: twrp-11
 
 jobs:
   build:
