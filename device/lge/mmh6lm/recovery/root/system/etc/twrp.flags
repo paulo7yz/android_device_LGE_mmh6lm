@@ -1,0 +1,20 @@
+# TWRP flags file
+# <mount_point>   <fstype>  <device>                                            <flags>
+/system_image   emmc    /dev/block/platform/bootdevice/by-name/system       flags=backup=1;flashimg=1;display="System Image"
+/vendor_image   emmc    /dev/block/platform/bootdevice/by-name/vendor       flags=backup=1;flashimg=1;display="Vendor Image"
+/product_image  emmc    /dev/block/platform/bootdevice/by-name/product      flags=backup=1;flashimg=1;display="Product Image"
+/boot           emmc    /dev/block/platform/bootdevice/by-name/boot         flags=backup=1;flashimg=1;display="Boot"
+/recovery       emmc    /dev/block/platform/bootdevice/by-name/recovery     flags=backup=1;flashimg=1;display="Recovery"
+/dtbo           emmc    /dev/block/platform/bootdevice/by-name/dtbo         flags=backup=1;flashimg=1;display="DTBO"
+/vbmeta         emmc    /dev/block/platform/bootdevice/by-name/vbmeta       flags=backup=1;flashimg=1;display="VBMeta"
+/nvram          emmc    /dev/block/platform/bootdevice/by-name/nvram        flags=backup=1;display="NVRAM"
+/nvdata         ext4    /dev/block/platform/bootdevice/by-name/nvdata       flags=backup=1;display="NVData"
+/nvcfg          ext4    /dev/block/platform/bootdevice/by-name/nvcfg        flags=backup=1;display="NVCfg"
+/persist        ext4    /dev/block/platform/bootdevice/by-name/persist      flags=backup=1;display="Persist"
+/persist_lg     ext4    /dev/block/platform/bootdevice/by-name/persist_lg   flags=backup=1;display="Persist LG"
+/protect_f      ext4    /dev/block/platform/bootdevice/by-name/protect1     flags=backup=1;display="Protect_F"
+/protect_s      ext4    /dev/block/platform/bootdevice/by-name/protect2     flags=backup=1;display="Protect_S"
+/proinfo        emmc    /dev/block/platform/bootdevice/by-name/proinfo      flags=backup=1;display="Proinfo"
+/logo           emmc    /dev/block/platform/bootdevice/by-name/logo         flags=backup=1;flashimg=1;display="Logo"
+/external_sd    auto    /dev/block/mmcblk1p1    /dev/block/mmcblk1          flags=display="MicroSD";storage;wipeingui;removable
+/usb_otg        auto    /dev/block/sda1         /dev/block/sda              flags=display="USB-OTG";storage;wipeingui;removable

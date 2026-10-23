@@ -63,9 +63,6 @@ TW_BRIGHTNESS_PATH := "/sys/class/leds/lcd-backlight/brightness"
 TW_MAX_BRIGHTNESS := 255
 TW_DEFAULT_BRIGHTNESS := 150
 
-# --- USB / UDC ---
-TW_INCLUDE_CRYPTO := true
-
 # --- Botões de seleção ---
 BOARD_HAS_NO_SELECT_BUTTON := true
 
@@ -99,13 +96,11 @@ TARGET_RECOVERY_FSTAB := device/lge/mmh6lm/recovery/root/system/etc/recovery.fst
 RECOVERY_VARIANT := twrp
 TW_DEFAULT_LANGUAGE := en
 TW_EXTRA_LANGAGES := false
-TW_EXCLUDE_DEFAULT_USB_INIT := true
 TARGET_USES_LOGD := true
 TWRP_INCLUDE_LOGCAT := true
 TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_EXCLUDE_TWRPAPP := true
 TW_EXCLUDE_SUPERSU := true
-TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_LOW_RES_SUPPORT := true
 TW_USE_TOOLBOX := true
 
